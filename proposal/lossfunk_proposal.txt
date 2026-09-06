@@ -1,0 +1,182 @@
+Predicting Predictability 
+When can a neural network skip the simulation? 
+Research Internship proposal · Lossfunk 
+1. The What 
+What I am claiming 
+A neural surrogate for a dynamical system is a shortcut. Instead of running a solver for 64 steps you do one 
+forward pass. Sometimes this works well. Sometimes the model falls apart after two steps and no amount of 
+tuning fixes it. The field treats that second case as an engineering problem: change the architecture, add 
+data, scale up. 
+I claim it is often not an engineering problem. How far a surrogate can leap ahead before it breaks is largely a 
+property of the system, not of the model, and it can be measured before training anything. 
+The sharper version is that learnability is a separate axis from chaos. The natural assumption is that chaotic 
+systems are hard to predict and stable ones are easy, so the largest Lyapunov exponent should tell you what 
+you need. I think it does not. Two systems can be equally chaotic at the level of individual trajectories while 
+one has a self-contained coarse description a network can latch onto and the other does not. If that holds, 
+chaoticity and learnability come apart, and the second one is what matters for surrogate modelling. 
+Concretely: sweep a large family of systems, measure one number per system (how many simulator steps a 
+fixed-budget surrogate can jump before error crosses a threshold), and test which measurable properties of 
+the system predict that number. 
+The surprise 
+• Surrogate failure is treated as a modelling failure. If a system’s leap horizon saturates as you scale 
+model size and data, that is an intrinsic ceiling, not underfitting. Nobody currently checks, so failures get 
+blamed on the architecture. 
+• The Lyapunov exponent is treated as the relevant quantity. Weather and climate ML lean on this 
+heavily. If a large share of the variance in learnability survives after regressing it out, that assumption is 
+incomplete. 
+• Computational irreducibility is discussed as binary. Measuring it as a continuous quantity across rule 
+space turns a philosophical claim into an empirical map. 
+Who updates: people building neural PDE surrogates and neural operators, people building world models for 
+planning, the artificial life and cellular automata community, and the weather and climate ML groups who 
+spend real money deciding which regimes are worth modelling. 
+One sentence 
+I want to find out whether how far a neural network can fast-forward a dynamical system is an intrinsic, 
+measurable property of that system rather than a property of the model, and whether it is distinct from how 
+chaotic the system is. 
+Alignment with Lossfunk 
+Two of the four directions. Creativity in artificial systems, under world models, representations and 
+abstractions: this asks what abstractions a system admits at all, which sits underneath the question of how to 
+build better world models. Biological foundations of intelligence, under artificial life and predictive 
+processing: a predictive system is only useful where prediction is possible, and this project draws that 
+boundary. 
+
+
+===== PAGE BREAK =====
+
+There is also a direct connection to work already coming out of the lab. Hybrid Neural World Models trains 
+one network to leap any number of simulator steps and uses step-doubling disagreement to say when to 
+trust a prediction. My question is the one underneath it: when is the leap possible at all, and can you tell in 
+advance? The trajectory data from that paper is public, so I can validate a predictor on systems the lab 
+already understands. 
+2. The Why 
+New questions this opens 
+• If closure of a coarse description predicts learnability, can the coarse description be learned instead of 
+hand-picked? That reframes representation learning from "what latent lowers the loss" to "what latent 
+makes the dynamics closed", which is a testable target. 
+• Can compute be allocated by local irreducibility? If reducibility varies across space inside one system, a 
+surrogate should spend more compute where the dynamics are irreducible. The trust maps in the lab’s 
+own work already show error concentrating on shock fronts and wave boundaries. 
+• Is there a phase boundary in rule space? Langton’s lambda claimed complexity peaks at the edge of 
+chaos. If learnability drops off a cliff somewhere specific, that is a sharper and measured version of the 
+same claim. 
+• Does the same axis predict RL sample efficiency? If an environment is irreducible, model-based RL 
+should not beat model-free RL there. That is a concrete prediction others can check. 
+The first two are not askable until a measurable notion of learnability exists. The last two are askable in 
+principle but unanswerable now, because nobody has the map. 
+Who would build on this 
+Neural PDE and operator groups, who currently pick benchmarks by convenience rather than by difficulty. 
+The artificial life and NCA community, where irreducibility is discussed constantly and measured almost 
+never. Computational mechanics, where excess entropy and statistical complexity have never been tested 
+against neural learnability. Weather and climate ML, where deciding which regimes and lead times are worth 
+modelling is expensive. And model-based RL researchers, for environment selection and for explaining rollout 
+failure. 
+Crossroads or corridor 
+Crossroads. The measurement is shared but four communities want different things from it: physicists want 
+the link to irreducibility, ML people want a pre-training predictor that saves compute, ALife people want the 
+rule-space map, and RL people want to know when a world model is worth building. The failure mode I want 
+to avoid is producing a benchmark, which is a corridor. The map plus a validated predictor is the crossroads 
+version, because the predictor is the part others can run on their own systems. 
+3. The How 
+Killer alternative explanation 
+The obvious dismissal: your models are just too small, and "irreducibility" is underfitting with a nicer name. 
+This is the single most important thing to foreclose and it has a clean test. For a subset of systems spanning 
+the measured range, sweep model capacity across roughly two orders of magnitude and sweep training set 
+size similarly, then look at the leap horizon. If the horizon keeps climbing with capacity, I am measuring my 
+model and the project is dead in that form. If it saturates, and saturates at different levels for different 
+systems, the ceiling belongs to the system. That is the crux experiment and I would run it early rather than 
+late, because it decides whether the rest is worth doing. 
+
+
+===== PAGE BREAK =====
+
+Four more, and how each is closed: 
+• It is just the Lyapunov exponent. Treated as the null model. Fit it first, report the variance it explains, 
+claim nothing unless the residual is large and structured. Preregistered kill criterion: if Lyapunov 
+exponent plus entropy rate explains 90% or more of the variance in leap horizon, I report that and stop. 
+• It is a cellular automata artifact. Continuous systems are included from the start, not bolted on later. 
+• You picked the rules that worked. Rule space is sampled on a grid fixed up front, and the whole map is 
+reported including the boring parts. 
+• Your error metric hides things. Pattern-forming systems break MSE badly: a surrogate can produce the 
+right structures at the wrong phase and score terribly while being useful. I report per-cell error, pattern-
+level statistics and a structure metric, and only claim results that hold across all three. 
+Experimental design 
+Measurement. For each system, train a fixed-architecture surrogate to predict the state k steps ahead in one 
+pass, across a horizon ladder. The leap horizon is where normalised error crosses a fixed threshold. That 
+single number per system is the dependent variable. 
+Substrate 1, rule sweep. Cellular automata and neural cellular automata. I already have a large sequence 
+dataset from earlier work, which gives me a rule library with controllable complexity at very low compute. 
+This is where the map gets built. 
+Substrate 2, continuous systems. Coupled map lattices with tunable coupling, Lorenz-96 with tunable 
+forcing, Kuramoto-Sivashinsky with tunable domain size, and Gray-Scott reaction diffusion across its regimes. 
+Each has a knob that moves the system through qualitatively different behaviour, so predictors can be tested 
+along a continuum rather than across unrelated systems. 
+Substrate 3, external validation. Public trajectory data from Hybrid Neural World Models: reaction diffusion, 
+compressible flow, rigid body. Predictors fit on substrates 1 and 2 are tested here without refitting. 
+Candidate predictors, in increasing order of theoretical interest: largest Lyapunov exponent (the null 
+model); entropy rate and spatial correlation length; excess entropy, meaning mutual information between 
+past and future; and closure of a coarse description, meaning how much extra predictive power the 
+microstate adds over a coarse macrostate. If it adds nothing the coarse law is closed, and I expect closed 
+systems to be the learnable ones. 
+Success criterion. A predictor fit on one part of rule space that generalises to held-out rule families and to 
+substrate 3, beating the Lyapunov baseline by a margin larger than seed variance. 
+Compute. Small. Grids at or below 128 by 128, surrogates in the small-CNN range, hundreds of short runs 
+rather than a few long ones. A single GPU is enough. 
+What rigor looks like here 
+• Three to five seeds per system, leap horizon reported as a distribution and not a point. 
+• Predictor grid and metric definitions frozen before the sweep runs, so the map cannot be reverse-
+engineered into a story. 
+• Held-out rule families rather than held-out samples, since the claim is about generalisation across 
+systems. 
+• Partial correlations between predictors, because correlation length and excess entropy will overlap. 
+• A preregistered kill criterion, stated above, and negative regions of the map reported at the same size as 
+positive ones. 
+What only I can do 
+
+
+===== PAGE BREAK =====
+
+Agents handle the sweeps well. Generating rule families, launching hundreds of short training runs, 
+computing Lyapunov exponents and fitting regressions are all automatable, and I would automate them. 
+What is not: deciding what counts as a fair coarse-graining, which is the conceptual core and a judgment call 
+rather than a search. Recognising "wrong but right" predictions, where a surrogate produces the correct 
+structures at the wrong phase and MSE calls that the same as noise. And interpreting the residual left after 
+the null model, since working out what that structure is corresponds to the actual finding. 
+Estimated human time: roughly 250 to 350 hours across six months, concentrated in metric design, failure 
+inspection and interpretation. 
+4. The So What 
+Impact type 
+Conceptual, primarily. It moves computational irreducibility from a claim about rules into a measurable 
+property of systems, and separates learnability from chaoticity. Practical, secondarily: if a cheap statistic 
+predicts whether a surrogate will work, you can decide before spending the training budget. That matters in 
+climate, molecular dynamics and plasma modelling, where surrogate projects run for months before anyone 
+finds out they were never going to work. Methodological as a side effect, since the leap horizon is a cheap, 
+comparable difficulty measure the surrogate literature currently lacks. 
+Broadest truthful audience 
+Anyone who has asked what can be predicted without being simulated: forecasters, physicists working on 
+coarse-graining, and cognitive scientists interested in predictive processing, since a brain doing prediction 
+faces the same constraint. The framing that reaches them without overstating is that some systems can be 
+fast-forwarded and some cannot, and we can now measure which is which instead of finding out the hard 
+way. 
+The science version 
+Title: A measurable limit on what can be predicted without simulating it. 
+Press release lead: machine learning models are increasingly used to skip ahead through expensive 
+simulations of weather, chemistry and physics. This work shows that whether the skip is possible is a 
+property of the system being simulated rather than of the model doing the skipping, and that it can be 
+measured cheaply in advance. It also finds that how chaotic a system is tells you less about this than 
+expected. 
+Six-month plan 
+Weeks 
+Work 
+1 to 3 
+Pipeline. Horizon-ladder surrogate on one system, sanity checks, metric definitions frozen. 
+4 to 8 
+Rule sweep on the CA and NCA substrate. First learnability map. 
+9 to 12 
+Capacity and data saturation test. The crux experiment. Go or no-go. 
+13 to 18 
+Continuous systems. Predictor fitting, held-out rule families, partial correlations. 
+19 to 22 
+External validation on public trajectory data. Failure analysis. 
+23 to 26 
+Writing, negative results section, released map and code. 
+ 
