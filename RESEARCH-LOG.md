@@ -39,3 +39,31 @@ discovered later during execution.
 (3) how to satisfy the independent-critic role given no `codex` CLI, (4) LaTeX toolchain.
 
 **Next.** Await problem statements, then run exploration.
+
+## 2026-09-06 — Session 0: user calibration
+
+**Time budget: 5 days.** Not the 2-hour voila.md default. This changes the plan
+materially — it buys a real literature review, several candidate spikes explored before
+committing, multi-seed everything, and a genuine ablation grid rather than a single
+run per condition. Deadline 2026-09-11.
+
+**Independent critic: user relays to ChatGPT/Gemini and pastes back.** So critique
+points must be packaged as self-contained blocks the user can copy out — full context,
+the claim, the plan, and the specific question being put to the critic. The critic's
+*disagreement* is the useful signal; agreement is not evidence.
+
+**LaTeX:** deferred. Install Tectonic (single binary, no TeX Live) when paper writing
+starts; not on the critical path until then.
+
+**Phase plan under a 5-day budget**
+| Day | Phase |
+|---|---|
+| 1 | Problem statement intake, literature review, exploration - generate many candidate claims |
+| 2 | Narrow to 3 directions, present to user, sharpen the chosen one, critic pass |
+| 3-4 | Experiment execution: baselines first, then the discriminating experiments, multi-seed |
+| 5 | Interpretation, reviewer self-check, draft, critic pass, compile PDF |
+
+Slack is deliberate: the philosophy expects evidence to redirect the question, and that
+costs time.
+
+**Next.** Awaiting problem statements from the user.
