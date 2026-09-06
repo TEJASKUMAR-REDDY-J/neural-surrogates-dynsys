@@ -1,0 +1,30 @@
+# python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# experiment outputs (regenerable) - keep small figures/metrics, drop bulk
+**/data/raw/
+**/checkpoints/
+*.pt
+*.pth
+*.npz
+*.npy
+*.h5
+
+# latex build
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.toc
+
+# os
+.DS_Store
+Thumbs.db
