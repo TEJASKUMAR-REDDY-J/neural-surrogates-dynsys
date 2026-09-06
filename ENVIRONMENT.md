@@ -27,6 +27,18 @@ Audited 2026-09-06. This is the feasibility budget: any proposed experiment must
 - No `torchdiffeq` / `diffrax` (installable if an ODE-solver-in-the-loop design is chosen;
   `scipy.integrate.solve_ivp` covers most needs without a new dependency).
 
+## Measured throughput (not estimated)
+Benchmarked 2026-09-06 on this machine. `torch.get_num_threads() == 2`, `cuda == False`.
+
+| Workload | Time |
+|---|---|
+| 100 Lorenz trajectories, 4k points each, `solve_ivp` rtol 1e-8 | 28 s (~0.28 s/traj) |
+| MLP 133k params, 50k samples, 20 epochs, batch 256, Adam | 17 s (~0.85 s/epoch) |
+
+Implications: a 200-epoch fit of a ~10^5-param net is ~3 minutes. **Five seeds of one
+configuration is ~15 minutes.** A 4-condition ablation at 5 seeds is ~1 hour. Data
+generation is effectively free. Multi-seed rigor is affordable here; scale is not.
+
 ## What this constrains
 Two slow cores, no GPU. Budget accordingly:
 - Train runs must be **minutes, not hours**. Assume ~1-5 min per model fit.
