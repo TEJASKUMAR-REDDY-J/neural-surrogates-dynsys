@@ -1,0 +1,9 @@
+{"record": "manifest", "run_id": "r1_coarse_grain__20260907T2233__ed9732", "experiment": "r1_coarse_grain", "started_utc": "2026-09-07T22:33:23Z", "git_sha": "3abf2f6", "git_dirty": true, "config_path": "cli", "config_hash": "sha256:ed97326c194d95840cefbff1920642467f6df9765bf59bc97e61a60d7d9551f7", "config": {"block_sizes": [2], "k_values": [2], "max_projections": 200000, "rules": [105, 146], "escalate_sizes": [6], "escalate_projections": [200]}, "seed": null, "env": {"python": "3.12.7", "numpy": "1.26.4", "scipy": "1.12.0", "torch": "2.8.0+cpu", "threads": 2, "cuda": false}}
+{"record": "note", "message": "projection set built", "N": 2, "k": 2, "n_surjective": 14, "total_possible": 16, "exhaustive": true, "build_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 105, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 6, "reducible": true, "example_coarse_rule": 150, "wall_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 146, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.0}
+{"record": "note", "message": "block size done", "N": 2, "k": 2, "n_reducible": 1, "irreducible": [146]}
+{"record": "note", "message": "escalation", "N": 6, "n_survivors": 1, "survivors": [146], "budgets": [200]}
+{"record": "result", "block_size": 6, "k": 2, "rule": 146, "n_projections_tried": 200, "exhaustive": false, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.809}
+{"record": "note", "message": "escalation done", "N": 6, "still_irreducible": [146]}
+{"record": "summary", "n_units": 3, "failed": 0, "wall_s": 6.2, "finished_utc": "2026-09-07T22:33:29Z"}

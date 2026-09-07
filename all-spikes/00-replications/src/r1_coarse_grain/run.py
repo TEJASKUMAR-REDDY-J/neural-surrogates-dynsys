@@ -91,17 +91,21 @@ def enumerate_projections(S: int, k: int, max_count: int | None, seed: int = 0) 
     satisfies the consistency condition for every rule, which would make the whole
     measurement meaningless.
     """
-    total = k**S
+    total = k**S  # a Python int, so this is exact even at S=64
     rng = np.random.default_rng(seed)
     if max_count is None or total <= max_count:
+        # small enough to enumerate every projection
         codes = np.arange(total, dtype=np.int64)
+        P = np.empty((len(codes), S), dtype=np.int64)
+        c = codes.copy()
+        for j in range(S):
+            P[:, j] = c % k
+            c //= k
     else:
-        codes = rng.choice(total, size=max_count, replace=False)
-    P = np.empty((len(codes), S), dtype=np.int64)
-    c = codes.copy()
-    for j in range(S):
-        P[:, j] = c % k
-        c //= k
+        # Sample the projections directly rather than sampling indices into a space of size
+        # k**S: at S=64 that space is 2**64, which no integer index can address. Duplicates
+        # are possible but vanishingly rare at these densities and harmless.
+        P = rng.integers(0, k, size=(max_count, S), dtype=np.int64)
     keep = np.ones(len(P), dtype=bool)
     for v in range(k):
         keep &= (P == v).any(axis=1)

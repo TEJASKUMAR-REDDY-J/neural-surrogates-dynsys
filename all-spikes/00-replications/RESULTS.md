@@ -505,6 +505,120 @@ answer by a full model size — which is the fragility we are testing for.
 
 ## R1 — Is "this system has a simple summary" a real property?
 
-*Queued.* Our code already reproduces two published results exactly: rule 105 simplifies to
-rule 150, and rule 146 to rule 128 using the original authors' own recipe. So the
-measurement is trustworthy before we push it further than they did.
+**In one sentence:** yes at a fixed zoom level — searching 100× harder found nothing new —
+but the answer changes enormously with the zoom level, so "is it reducible?" is the wrong
+question and "at what scale?" is the right one.
+
+### The setup, in plain terms
+
+Cellular automata are the simplest systems there are: a row of cells, each 0 or 1, updated by
+a fixed rule. There are exactly **256** such rules, so you can check every single one — no
+sampling, no selection bias.
+
+The question Israeli and Goldenfeld asked in 2004: if you **squint** — group cells into
+blocks of N, and only record a summary of each block — does the blurry version follow a rule
+of its own? If it does, you can predict the blurry picture without simulating the detail.
+They found 240 of 256 rules can be squinted at this way.
+
+Our worry: finding that summary means **searching** through ways to summarise a block. The
+harder you search, the more likely you stumble on one that happens to work. So is
+"reducible" a fact about the rule, or a fact about your patience?
+
+### First, a validity check
+
+Before pushing further than the original authors, we checked we could reproduce them exactly.
+Two published examples:
+
+- rule 105 simplifies to rule 150 at block size 2 — **reproduced**
+- rule 146 simplifies to rule 128 at block size 3, using their own specific recipe
+  (summarise as 1 only if the block is `111`, else 0) — **reproduced**
+
+And a stronger check. A 2015 follow-up (Dzwinel & Magiera) built a faster algorithm, pushed
+to block size 7, and found the truly irreducible set narrows to exactly four rules:
+**{30, 45, 106, 154}**. All four are in our surviving set. **Our method never wrongly
+simplifies a rule that is known to be irreducible.**
+
+### What happened: zoom level matters enormously
+
+1,698 checks across all 256 rules. Reducibility, cumulatively:
+
+```
+block size 2  ->  92/256 reducible   (35.9%)   ██████████
+block size 3  -> 151/256              (59.0%)  ████████████████
+block size 4  -> 202/256              (78.9%)  ██████████████████████
+```
+
+Squint a bit harder and a third more rules become simple. That is a clean replication of the
+extended 2006 paper's claim: **the chance of finding a simple summary heads toward certainty
+as you look more coarsely.**
+
+(Our 78.9% is below the published 93.75% because we sampled 60,000 of the 65,536 possible
+summaries at block size 4, and the original authors also allowed summaries with more than two
+or three categories. Ours is a lower bound. The confirmatory rerun makes block size 4
+exhaustive.)
+
+### And searching harder did *not* matter
+
+This was the real test of our worry. At block size 5, we took the 54 rules that had survived
+so far and searched with three budgets in turn:
+
+| summaries tried | newly reducible |
+|---|---|
+| 40,000 | **0** |
+| 400,000 | **0** |
+| 4,000,000 | **0** |
+
+**A hundredfold increase in search effort found nothing.** If valid summaries were lying
+around waiting to be stumbled upon, more searching would have found some. It didn't. So at a
+fixed zoom level, "reducible" looks like a genuine property, not an artefact of patience.
+
+Our pre-registered kill criterion for this direction was "if the count moves by more than a
+few percent when the search widens." It moved by **zero**. The criterion did not fire.
+
+### A surprise about "wider" searches
+
+We also tried summarising into **three** categories instead of two, expecting that a richer
+summary would make more rules reducible. The opposite happened:
+
+| block size | 2 categories | 3 categories |
+|---|---|---|
+| 2 | 35.9% | 25.0% |
+| 3 | 55.1% | 35.2% |
+| 4 | 78.9% | 32.0% |
+
+And more pointedly: **not one rule was reducible with three categories that was not already
+reducible with two.**
+
+The reason, once you see it, is obvious. With two categories you must keep 8 combinations
+consistent. With three you must keep 27 consistent. More categories is a **stricter**
+demand, not a wider search. So "number of categories" is not a search-effort dial at all —
+it is a different question. Worth knowing, because we had it backwards going in.
+
+### What this means for the project
+
+Good news and bad news.
+
+**Good:** the label is trustworthy at a fixed scale. If we ever want to use "does a simple
+summary exist?" as ground truth, it is not going to move under us.
+
+**Bad, and decisive:** the answer is overwhelmingly **yes**. 79% of rules are already
+reducible at block size 4, and the published work reaches 252 of 256 by block size 7. Trying
+to train a predictor to spot the rare exception means predicting a class that occurs about
+**1.6%** of the time. That is a very different, much harder experiment than the one people
+imagine when they propose it — and it is a strong argument against building the project on
+this substrate.
+
+The honest framing, which the 2006 paper already reached: reducibility is not a yes/no
+property of a system. It is **scale-indexed**. The interesting quantity is *at what scale*
+simplicity appears, which is a regression, not a classification.
+
+### A process note worth recording
+
+The full sweep crashed at block size 6 with an integer overflow: 2⁶⁴ possible summaries
+cannot be counted in a 64-bit integer. Because the results CSV was only written at the very
+end, a two-hour sweep appeared to be lost.
+
+It wasn't. Every row had already been streamed to the run log as it was produced, so all
+1,698 rows were recovered (`src/r1_coarse_grain/recover.py`). That is precisely why the
+logging format writes one line per unit of work instead of one file per run — and it is the
+first time it has actually paid for itself.
