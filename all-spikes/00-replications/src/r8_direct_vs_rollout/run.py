@@ -112,7 +112,10 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--epochs", type=int, default=250)
     ap.add_argument("--n-points", type=int, default=45_000)
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--n-shards", type=int, default=1)
     args = ap.parse_args()
+    args.systems = [s for i, s in enumerate(args.systems) if i % args.n_shards == args.shard]
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -180,7 +183,7 @@ def main() -> None:
                 )
 
     keys = sorted({k for r in rows for k in r})
-    with (RESULTS / "direct_vs_rollout.csv").open("w", newline="", encoding="utf-8") as fh:
+    with (RESULTS / (f"direct_vs_rollout" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(rows)

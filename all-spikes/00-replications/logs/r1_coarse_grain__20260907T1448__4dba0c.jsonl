@@ -1,0 +1,14 @@
+{"record": "manifest", "run_id": "r1_coarse_grain__20260907T1448__4dba0c", "experiment": "r1_coarse_grain", "started_utc": "2026-09-07T14:48:56Z", "git_sha": "2d41c7f", "git_dirty": true, "config_path": "cli", "config_hash": "sha256:4dba0c2a56178bf1b08a3cfc638fc95ea18801b8d97f37ff9a291ffee1e8b103", "config": {"block_sizes": [2], "k_values": [2], "max_projections": 200000, "rules": [30, 90, 105, 110], "escalate_sizes": [4], "escalate_projections": [5000, 60000]}, "seed": null, "env": {"python": "3.12.7", "numpy": "1.26.4", "scipy": "1.12.0", "torch": "2.8.0+cpu", "threads": 2, "cuda": false}}
+{"record": "note", "message": "projection set built", "N": 2, "k": 2, "n_surjective": 14, "total_possible": 16, "exhaustive": true, "build_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 30, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 90, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 6, "reducible": true, "example_coarse_rule": 165, "wall_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 105, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 6, "reducible": true, "example_coarse_rule": 150, "wall_s": 0.0}
+{"record": "result", "block_size": 2, "k": 2, "rule": 110, "n_projections_tried": 14, "exhaustive": true, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.002}
+{"record": "note", "message": "block size done", "N": 2, "k": 2, "n_reducible": 2, "irreducible": [30, 110]}
+{"record": "note", "message": "escalation", "N": 4, "n_survivors": 2, "survivors": [30, 110], "budgets": [5000, 60000]}
+{"record": "result", "block_size": 4, "k": 2, "rule": 30, "n_projections_tried": 5000, "exhaustive": false, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.043}
+{"record": "result", "block_size": 4, "k": 2, "rule": 110, "n_projections_tried": 5000, "exhaustive": false, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.047}
+{"record": "result", "block_size": 4, "k": 2, "rule": 30, "n_projections_tried": 59998, "exhaustive": false, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.519}
+{"record": "result", "block_size": 4, "k": 2, "rule": 110, "n_projections_tried": 59998, "exhaustive": false, "n_valid_projections": 0, "reducible": false, "example_coarse_rule": null, "wall_s": 0.545}
+{"record": "note", "message": "escalation done", "N": 4, "still_irreducible": [30, 110]}
+{"record": "summary", "n_units": 8, "failed": 0, "wall_s": 6.7, "finished_utc": "2026-09-07T14:49:02Z"}

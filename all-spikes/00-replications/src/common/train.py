@@ -6,6 +6,8 @@ its seed, so a rerun of the same config reproduces the same numbers.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,7 +21,11 @@ from .metrics import (
 )
 from .models import HorizonMLP, count_params, mlp_for_budget
 
-torch.set_num_threads(2)
+# Measured on this machine: 1 thread is as fast as 2 for these model sizes (62.4s vs
+# 63.4s for the same three fits), because the work is Python/dispatch bound rather than
+# FLOP bound. Running two single-threaded worker processes instead gives ~1.7x. Override
+# with TORCH_THREADS if a future experiment is actually FLOP bound.
+torch.set_num_threads(int(os.environ.get("TORCH_THREADS", "1")))
 
 
 def fit(

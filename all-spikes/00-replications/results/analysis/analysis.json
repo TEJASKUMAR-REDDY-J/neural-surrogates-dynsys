@@ -4,48 +4,38 @@
       {
         "block_size": 2,
         "k": 2,
-        "n_rules": 9,
+        "n_rules": 4,
         "n_projections_tried": 14,
         "exhaustive": true,
-        "n_reducible": 3,
-        "frac_reducible": 0.3333333333333333,
+        "n_reducible": 2,
+        "frac_reducible": 0.5,
         "irreducible": [
           30,
-          45,
-          106,
-          110,
-          146,
-          154
+          110
         ]
       },
       {
-        "block_size": 3,
+        "block_size": 4,
         "k": 2,
-        "n_rules": 9,
-        "n_projections_tried": 254,
-        "exhaustive": true,
-        "n_reducible": 2,
-        "frac_reducible": 0.2222222222222222,
+        "n_rules": 4,
+        "n_projections_tried": 5000,
+        "exhaustive": false,
+        "n_reducible": 0,
+        "frac_reducible": 0.0,
         "irreducible": [
           30,
-          45,
-          90,
-          105,
-          106,
+          30,
           110,
-          154
+          110
         ]
       }
     ],
     "union_by_k": {
       "2": {
-        "n_reducible_at_some_block_size": 4,
+        "n_reducible_at_some_block_size": 2,
         "irreducible_everywhere": [
           30,
-          45,
-          106,
-          110,
-          154
+          110
         ]
       }
     },

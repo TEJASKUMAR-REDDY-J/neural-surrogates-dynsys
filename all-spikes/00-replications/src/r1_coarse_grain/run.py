@@ -109,28 +109,56 @@ def enumerate_projections(S: int, k: int, max_count: int | None, seed: int = 0) 
 
 
 def check_projections(
-    out_table: np.ndarray, P: np.ndarray, S: int, k: int, chunk: int = 4096
+    out_table: np.ndarray, P: np.ndarray, S: int, k: int, chunk: int = 2048
 ) -> np.ndarray:
     """Boolean per projection: does it induce a single-valued coarse rule?
 
-    Vectorised. For each projection we bin every triple by (coarse class, coarse output)
-    and require that each class produces at most one distinct output value.
-    """
-    tri = np.arange(S**3, dtype=np.int64)
-    b1, b2, b3 = tri // (S * S), (tri // S) % S, tri % S
-    T = len(tri)
-    k3, k4 = k**3, k**4
-    valid = np.empty(len(P), dtype=bool)
+    A projection is valid iff no coarse class ever produces two different coarse outputs.
 
+    Implemented as a bitmask reduction rather than a scatter. For each output symbol v we
+    OR together a bit for every class in which v occurs, giving one k^3-bit word per
+    projection; the projection is inconsistent exactly when two of those words share a
+    bit. This needs k passes of `bitwise_or.reduce` over a uint8-indexed array instead of
+    a bincount over B*k^4 bins, and it is ~15x faster at block size 4, which is where the
+    whole experiment's cost lives. Requires k**3 <= 64, true for every k we use.
+    """
+    if k**3 > 64:
+        raise ValueError(f"k={k} needs more than 64 classes; bitmask packing does not fit")
+
+    tri_all = np.arange(S**3, dtype=np.int64)
+    Pu = np.ascontiguousarray(P.astype(np.uint8))
+    one = np.uint64(1)
+
+    def _consistent(Pc: np.ndarray, tri: np.ndarray) -> np.ndarray:
+        b1, b2, b3 = tri // (S * S), (tri // S) % S, tri % S
+        cls = (Pc[:, b1] * k + Pc[:, b2]) * k + Pc[:, b3]          # (B, T) uint8
+        o = Pc[:, out_table[tri]]                                   # (B, T) uint8
+        bit = one << cls.astype(np.uint64)
+        masks = [
+            np.bitwise_or.reduce(np.where(o == v, bit, np.uint64(0)), axis=1)
+            for v in range(k)
+        ]
+        bad = np.zeros(len(Pc), dtype=np.uint64)
+        for a in range(k):
+            for b in range(a + 1, k):
+                bad |= masks[a] & masks[b]
+        return bad == 0
+
+    # Two-stage filter. A projection that is inconsistent on a subset of triples is
+    # inconsistent, full stop - so a cheap pass over a stratified subsample rejects the
+    # overwhelming majority at a fraction of the cost, and only survivors get the full
+    # check. Exact, not approximate: stage 1 only ever rejects definite failures.
+    n_probe = max(64, min(len(tri_all), len(tri_all) // 16))
+    probe = tri_all[:: max(1, len(tri_all) // n_probe)]
+
+    valid = np.zeros(len(P), dtype=bool)
     for s in range(0, len(P), chunk):
-        Pc = P[s : s + chunk]
-        B = len(Pc)
-        cls = (Pc[:, b1] * k + Pc[:, b2]) * k + Pc[:, b3]  # (B, T)
-        o = Pc[:, out_table]  # (B, T)
-        flat = (np.arange(B, dtype=np.int64)[:, None] * k3 + cls) * k + o
-        counts = np.bincount(flat.ravel(), minlength=B * k4).reshape(B, k3, k)
-        # a class is inconsistent if two different output symbols both occur in it
-        valid[s : s + chunk] = ((counts > 0).sum(axis=2) <= 1).all(axis=1)
+        Pc = Pu[s : s + chunk]
+        survivors = _consistent(Pc, probe)
+        if not survivors.any():
+            continue
+        idx = np.flatnonzero(survivors)
+        valid[s + idx] = _consistent(Pc[idx], tri_all)
     return valid
 
 
@@ -158,6 +186,20 @@ def main() -> None:
     ap.add_argument("--k-values", type=int, nargs="+", default=[2, 3])
     ap.add_argument("--max-projections", type=int, default=200_000)
     ap.add_argument("--rules", type=int, nargs="*", default=None)
+    ap.add_argument(
+        "--escalate-sizes", type=int, nargs="*", default=[],
+        help="after the main sweep, retry only the still-irreducible rules at these larger "
+             "block sizes. Dzwinel & Magiera report the set converging to {30,45,106,154} "
+             "at N=7, and the survivor set shrinks fast, so escalation is cheap.",
+    )
+    ap.add_argument(
+        "--escalate-projections", type=int, nargs="+",
+        default=[40_000, 400_000, 4_000_000],
+        help="search budgets tried in order. The budget at which a rule first "
+             "becomes reducible IS the measurement: past block size 4 the "
+             "projection space cannot be enumerated, so every count is a lower "
+             "bound whose value depends on how hard we looked.",
+    )
     args = ap.parse_args()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -230,6 +272,57 @@ def main() -> None:
                     flush=True,
                 )
                 log.note("block size done", N=N, k=k, n_reducible=n_red, irreducible=irreducible)
+
+        # Escalation: larger block sizes are only interesting for rules that have not
+        # already been reduced, and the survivor set collapses quickly, so this costs
+        # little and reaches the scale where the published answer lives.
+        for N in args.escalate_sizes:
+            S = 1 << N
+            reduced = {r["rule"] for r in rows if r["reducible"]}
+            survivors = [r for r in rules if r not in reduced]
+            if not survivors:
+                print(f"\n=== N={N}: nothing left to test ===", flush=True)
+                break
+            print(
+                f"\n=== N={N} (S={S}) k=2: escalating {len(survivors)} still-irreducible "
+                f"rules through budgets {args.escalate_projections} ===", flush=True)
+            log.note("escalation", N=N, n_survivors=len(survivors), survivors=survivors,
+                     budgets=args.escalate_projections)
+            pending = list(survivors)
+            for budget in args.escalate_projections:
+                if not pending:
+                    break
+                P = enumerate_projections(S, 2, budget)
+                nxt = []
+                for rule in pending:
+                    t1 = time.time()
+                    tab = block_automaton_table(rule, N)
+                    valid = check_projections(tab, P, S, 2, chunk=512)
+                    n_valid = int(valid.sum())
+                    row = {
+                        "block_size": N, "k": 2, "rule": rule,
+                        "n_projections_tried": int(len(P)),
+                        "exhaustive": bool(2**S <= budget),
+                        "n_valid_projections": n_valid,
+                        "reducible": bool(n_valid > 0),
+                        "example_coarse_rule": (
+                            coarse_rule_id(tab, P[np.argmax(valid)], S, 2) if n_valid else None
+                        ),
+                        "wall_s": round(time.time() - t1, 3),
+                    }
+                    rows.append(row)
+                    log.result(**row)
+                    if n_valid:
+                        print(
+                            f"  N={N} budget {budget:>9,}: rule {rule:>3} REDUCIBLE -> "
+                            f"{row['example_coarse_rule']} ({row['wall_s']:.1f}s)", flush=True)
+                    else:
+                        nxt.append(rule)
+                print(f"  N={N} budget {budget:>9,}: {len(pending)-len(nxt)} newly reducible, "
+                      f"{len(nxt)} still irreducible", flush=True)
+                pending = nxt
+            print(f"  N={N}: still irreducible after all budgets = {pending}", flush=True)
+            log.note("escalation done", N=N, still_irreducible=pending)
 
     keys = sorted({k for r in rows for k in r})
     with (RESULTS / "eca_coarse_grain.csv").open("w", newline="", encoding="utf-8") as fh:

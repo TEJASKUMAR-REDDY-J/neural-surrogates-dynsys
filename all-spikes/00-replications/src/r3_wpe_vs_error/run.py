@@ -96,10 +96,13 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--n-points", type=int, default=20_000)
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--n-shards", type=int, default=1)
     args = ap.parse_args()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     names = r2_systems(args.n_systems)
+    names = [n for i, n in enumerate(names) if i % args.n_shards == args.shard]
     rows = []
 
     with RunLog("r3_wpe_vs_error", vars(args), "cli", LOGS) as log:
@@ -154,7 +157,7 @@ def main() -> None:
                 )
 
     keys = sorted({k for r in rows for k in r})
-    with (RESULTS / "surrogate_vs_statistics.csv").open("w", newline="", encoding="utf-8") as fh:
+    with (RESULTS / (f"surrogate_vs_statistics" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(rows)

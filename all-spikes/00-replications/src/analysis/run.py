@@ -27,10 +27,17 @@ OUT = RES / "analysis"
 
 
 def read_csv(path: Path) -> list[dict]:
-    if not path.exists():
+    """Read a results CSV, transparently merging any shard files beside it.
+
+    Experiments can be split across worker processes; each shard writes
+    <stem>__shardN.csv. Analysis should not care how the work was divided.
+    """
+    paths = [path] if path.exists() else []
+    paths += sorted(path.parent.glob(path.stem + "__shard*.csv"))
+    if not paths:
         return []
     rows = []
-    for r in csv.DictReader(path.open(encoding="utf-8")):
+    for r in [x for pth in paths for x in csv.DictReader(pth.open(encoding="utf-8"))]:
         out = {}
         for k, v in r.items():
             if v is None or v == "":
@@ -132,6 +139,7 @@ def analyse_r2() -> dict:
     cols = [
         "lyap_max", "kaplan_yorke_dim", "correlation_dim_pub", "multiscale_entropy",
         "perm_entropy", "wpe", "k01", "spectral_entropy", "corr_dim_ours", "dim",
+        "autocorr_time",
     ]
     cols = [c for c in cols if c in rows[0]]
     M = np.array([[r.get(c, np.nan) for c in cols] for r in rows], float)
@@ -152,7 +160,18 @@ def analyse_r2() -> dict:
     part = float((ev.sum() ** 2) / (ev**2).sum())
 
     off = corr[~np.eye(len(cols), dtype=bool)]
+    naive = {}
+    for a, b in (("wpe", "wpe_naive"), ("k01", "k01_naive"), ("perm_entropy", "perm_entropy_naive")):
+        if b in rows[0]:
+            x = np.array([r[a] for r in rows], float)
+            y = np.array([r[b] for r in rows], float)
+            naive[a] = {
+                "spearman_corrected_vs_naive": spearman(x, y),
+                "mean_corrected": float(np.nanmean(x)),
+                "mean_naive": float(np.nanmean(y)),
+            }
     return {
+        "sampling_correction": naive,
         "n_systems": int(keep.sum()),
         "columns": cols,
         "spearman_matrix": corr.round(3).tolist(),

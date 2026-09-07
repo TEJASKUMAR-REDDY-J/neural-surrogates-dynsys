@@ -47,6 +47,29 @@ def _rank_among_remaining(ranks: np.ndarray, k: int) -> np.ndarray:
     return (ranks[:, k + 1 :] < ranks[:, k : k + 1]).sum(axis=1)
 
 
+def autocorrelation_time(x: np.ndarray, max_lag: int | None = None) -> int:
+    """First lag at which the autocorrelation drops below 1/e. At least 1.
+
+    Ordinal statistics (permutation entropy) and the 0-1 chaos test both assume samples
+    are far enough apart to be informative. Trajectories aligned at 100 points per
+    dominant period are heavily oversampled, and at delay 1 these statistics measure the
+    sampling rate rather than the dynamics: on Lorenz, the 0-1 test returns -0.00
+    ("not chaotic") at delay 1 and +1.00 at delay 5. Toker et al. (2020) handle this with
+    an explicit oversampling-correction step; this is our version of it.
+    """
+    x = np.asarray(x, dtype=float).ravel()
+    x = x - x.mean()
+    n = len(x)
+    if max_lag is None:
+        max_lag = max(2, n // 20)
+    denom = float((x * x).sum())
+    if denom <= 0:
+        return 1
+    ac = np.correlate(x, x, mode="full")[n - 1 : n - 1 + max_lag] / denom
+    below = np.flatnonzero(ac < 1.0 / np.e)
+    return int(below[0]) if len(below) else 1
+
+
 def permutation_entropy(
     x: np.ndarray, order: int = 5, delay: int = 1, weighted: bool = False
 ) -> float:
@@ -363,11 +386,30 @@ def demo() -> None:
     err = np.array([0.01, 0.05, 0.2, 0.9, 1.2])
     assert valid_prediction_time(err, 0.4, dt_lyap=0.5) == 1.5
 
+    # oversampling correction: an oversampled chaotic signal must be recognised as
+    # chaotic once the delay respects the autocorrelation time
+    t = np.linspace(0, 200 * np.pi, n)
+    slow = np.sin(t) + 0.35 * np.sin(np.pi * t)      # quasi-periodic, densely sampled
+    tau_slow = autocorrelation_time(slow)
+    assert tau_slow > 1, tau_slow
+    assert autocorrelation_time(noise) == 1, autocorrelation_time(noise)
+    # A smoothly oversampled chaotic series: at delay 1 the ordinal statistics see a
+    # smooth curve, and correcting the delay recovers the underlying disorder.
+    dense = np.interp(np.linspace(0, len(log_map) - 1, len(log_map) * 8),
+                      np.arange(len(log_map)), log_map)
+    tau_dense = autocorrelation_time(dense)
+    assert tau_dense >= 4, tau_dense
+    pe_naive = permutation_entropy(dense, order=5, delay=1)
+    pe_corrected = permutation_entropy(dense, order=5, delay=tau_dense)
+    assert pe_corrected > pe_naive + 0.3, (pe_naive, pe_corrected)
+    assert pe_naive < 0.4 and pe_corrected > 0.6, (pe_naive, pe_corrected)
+
     print(
         "metrics ok - "
         f"PE sine {pe_sine:.3f} logistic {pe_log:.3f} noise {pe_noise:.3f} | "
         f"K sine {k_sine:.2f} logistic {k_log:.2f} | "
-        f"corrdim cloud {cd_cloud:.2f} line {cd_line:.2f}"
+        f"corrdim cloud {cd_cloud:.2f} line {cd_line:.2f} | "
+        f"oversampled logistic: tau={tau_dense}, PE {pe_naive:.2f}->{pe_corrected:.2f}"
     )
 
 

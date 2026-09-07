@@ -128,14 +128,17 @@ def main() -> None:
     ap.add_argument("--n-test", type=int, default=4_000)
     ap.add_argument("--epochs", type=int, default=250)
     ap.add_argument("--skip-henon", action="store_true")
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--n-shards", type=int, default=1)
     args = ap.parse_args()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     rows, summary = [], []
 
-    families = [("StandardMap", args.k_values, standard_map_dataset)]
+    shard = lambda v: [x for i, x in enumerate(v) if i % args.n_shards == args.shard]
+    families = [("StandardMap", shard(args.k_values), standard_map_dataset)]
     if not args.skip_henon:
-        families.append(("HenonMap", args.henon_values, henon_dataset))
+        families.append(("HenonMap", shard(args.henon_values), henon_dataset))
 
     total = sum(len(v) for _, v, _ in families) * len(args.budgets) * len(args.seeds)
     done, t_start = 0, time.time()
@@ -205,13 +208,13 @@ def main() -> None:
                     log.result(record_kind="required_capacity", **srec)
 
     keys = sorted({k for r in rows for k in r})
-    with (RESULTS / "capacity_curves.csv").open("w", newline="", encoding="utf-8") as fh:
+    with (RESULTS / (f"capacity_curves" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(rows)
 
     skeys = sorted({k for r in summary for k in r})
-    with (RESULTS / "required_capacity.csv").open("w", newline="", encoding="utf-8") as fh:
+    with (RESULTS / (f"required_capacity" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=skeys)
         w.writeheader()
         w.writerows(summary)

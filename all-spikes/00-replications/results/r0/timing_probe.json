@@ -1,0 +1,74 @@
+[
+  {
+    "budget": 1000,
+    "n_params": 1011,
+    "n_train": 500,
+    "epochs": 200,
+    "wall_s": 3.81,
+    "final_train_loss": 0.0003085246293339878
+  },
+  {
+    "budget": 1000,
+    "n_params": 1011,
+    "n_train": 8000,
+    "epochs": 200,
+    "wall_s": 11.12,
+    "final_train_loss": 2.901525890592893e-06
+  },
+  {
+    "budget": 1000,
+    "n_params": 1011,
+    "n_train": 32000,
+    "epochs": 200,
+    "wall_s": 51.24,
+    "final_train_loss": 5.317934931099444e-07
+  },
+  {
+    "budget": 10000,
+    "n_params": 9987,
+    "n_train": 500,
+    "epochs": 200,
+    "wall_s": 0.96,
+    "final_train_loss": 0.00019737614842597396
+  },
+  {
+    "budget": 10000,
+    "n_params": 9987,
+    "n_train": 8000,
+    "epochs": 200,
+    "wall_s": 13.46,
+    "final_train_loss": 2.559577532338153e-06
+  },
+  {
+    "budget": 10000,
+    "n_params": 9987,
+    "n_train": 32000,
+    "epochs": 200,
+    "wall_s": 55.24,
+    "final_train_loss": 1.1471664402051829e-07
+  },
+  {
+    "budget": 100000,
+    "n_params": 99843,
+    "n_train": 500,
+    "epochs": 200,
+    "wall_s": 1.91,
+    "final_train_loss": 0.0002741089800838381
+  },
+  {
+    "budget": 100000,
+    "n_params": 99843,
+    "n_train": 8000,
+    "epochs": 200,
+    "wall_s": 28.27,
+    "final_train_loss": 1.0521120861994859e-06
+  },
+  {
+    "budget": 100000,
+    "n_params": 99843,
+    "n_train": 32000,
+    "epochs": 200,
+    "wall_s": 156.7,
+    "final_train_loss": 1.301580783206191e-07
+  }
+]

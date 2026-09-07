@@ -55,19 +55,38 @@ def instruments_for(name: str, n_points: int, fsle_deltas: np.ndarray) -> dict:
     rec.update(spec.invariants)
     rec["lyap_time_per_step"] = spec.lyap_time_per_step
 
-    # model-free statistics: per channel then averaged, so they do not depend on which
-    # component someone happened to record
+    # Model-free statistics: per channel then averaged, so they do not depend on which
+    # component someone happened to record.
+    #
+    # Both a naive and a sampling-corrected version are recorded. Trajectories are aligned
+    # at 100 points per dominant period (Gilpin's protocol), which is heavily oversampled
+    # for ordinal statistics: on Lorenz the 0-1 chaos test reads -0.00 at delay 1 and
+    # +1.00 at delay 5, on identical data. The corrected version uses each channel's
+    # autocorrelation time as the delay, following the oversampling-correction step in
+    # Toker et al. (2020). The naive values are kept because the gap between them is a
+    # result in its own right: these statistics are not properties of a system until the
+    # sampling convention is fixed.
     pes, wpes, ks, ses = [], [], [], []
+    pes_n, wpes_n, ks_n, taus = [], [], [], []
     for c in range(Z.shape[1]):
         x = Z[:, c]
-        pes.append(M.permutation_entropy(x, order=5))
-        wpes.append(M.permutation_entropy(x, order=5, weighted=True))
-        ks.append(M.zero_one_test_chaos(x, n_c=40, max_n_frac=0.05))
+        tau = M.autocorrelation_time(x)
+        taus.append(tau)
+        pes_n.append(M.permutation_entropy(x, order=5, delay=1))
+        wpes_n.append(M.permutation_entropy(x, order=5, delay=1, weighted=True))
+        ks_n.append(M.zero_one_test_chaos(x, n_c=40, max_n_frac=0.05))
+        pes.append(M.permutation_entropy(x, order=5, delay=tau))
+        wpes.append(M.permutation_entropy(x, order=5, delay=tau, weighted=True))
+        ks.append(M.zero_one_test_chaos(x[::tau], n_c=40, max_n_frac=0.05))
         ses.append(M.spectral_entropy(x))
+    rec["autocorr_time"] = float(np.median(taus))
     rec["perm_entropy"] = float(np.mean(pes))
     rec["wpe"] = float(np.mean(wpes))
     rec["wpe_x"] = float(wpes[0])
     rec["k01"] = float(np.median(ks))
+    rec["perm_entropy_naive"] = float(np.mean(pes_n))
+    rec["wpe_naive"] = float(np.mean(wpes_n))
+    rec["k01_naive"] = float(np.median(ks_n))
     rec["spectral_entropy"] = float(np.mean(ses))
     rec["corr_dim_ours"] = M.correlation_dimension(Z, n_sub=2000)
 
@@ -108,7 +127,9 @@ def main() -> None:
                 log.result(**rec)
                 print(
                     f"[{i+1:3d}/{len(names)}] {name:<26} "
-                    f"lam={rec['lyap_max']:6.3f} WPE={rec['wpe']:.3f} K={rec['k01']:5.2f} "
+                    f"lam={rec['lyap_max']:6.3f} tau={rec['autocorr_time']:.0f} "
+                    f"WPE={rec['wpe']:.3f}(naive {rec['wpe_naive']:.3f}) "
+                    f"K={rec['k01']:5.2f}(naive {rec['k01_naive']:5.2f}) "
                     f"Dky={rec['kaplan_yorke_dim']:.2f} Dcorr={rec['corr_dim_ours']:.2f} "
                     f"({rec['wall_s']}s)",
                     flush=True,
