@@ -21,9 +21,9 @@ wait
 
 log "R8b long horizons"
 python -u -m src.r8_direct_vs_rollout.run --h-max 512 \
-    --horizons 1 2 4 8 16 32 64 128 256 512 --shard 0 --n-shards 2 &
+    --horizons 1 2 4 8 16 32 64 128 256 512 --direct-pair-multipliers 1 4 --shard 0 --n-shards 2 &
 python -u -m src.r8_direct_vs_rollout.run --h-max 512 \
-    --horizons 1 2 4 8 16 32 64 128 256 512 --shard 1 --n-shards 2 &
+    --horizons 1 2 4 8 16 32 64 128 256 512 --direct-pair-multipliers 1 4 --shard 1 --n-shards 2 &
 wait
 
 log "ANALYSIS + FIGURES"

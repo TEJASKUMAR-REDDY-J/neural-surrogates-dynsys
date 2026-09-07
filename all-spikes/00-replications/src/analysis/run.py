@@ -431,8 +431,13 @@ def analyse_r8() -> dict:
     if not rows:
         return {}
     out: dict = {"per_system": []}
+    mults = sorted({r.get("direct_pair_multiplier") or 1 for r in rows})
     for s in sorted({r["system"] for r in rows}):
-        sub = [r for r in rows if r["system"] == s]
+      for mult in mults:
+        sub = [r for r in rows if r["system"] == s
+               and (r.get("direct_pair_multiplier") or 1) == mult]
+        if not sub:
+            continue
         hs = sorted({r["horizon"] for r in sub})
         roll = [float(np.mean([r["err_rollout"] for r in sub if r["horizon"] == h])) for h in hs]
         dirc = [float(np.mean([r["err_direct"] for r in sub if r["horizon"] == h])) for h in hs]
@@ -441,6 +446,7 @@ def analyse_r8() -> dict:
         out["per_system"].append(
             {
                 "system": s,
+                "direct_pair_multiplier": mult,
                 "lyap_max": sub[0]["lyap_max"],
                 "kaplan_yorke_dim": sub[0]["kaplan_yorke_dim"],
                 "horizons": hs,

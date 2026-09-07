@@ -111,6 +111,15 @@ def main() -> None:
     ap.add_argument("--horizons", type=int, nargs="+", default=[1, 2, 4, 8, 16, 32, 64])
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--epochs", type=int, default=250)
+    ap.add_argument(
+        "--direct-pair-multipliers", type=int, nargs="+", default=[1],
+        help="training-pair multipliers for the direct model. Matching the pair count to "
+             "the rollout model (multiplier 1) matches the data budget, but the direct "
+             "model must represent a whole family of maps from it, so each horizon gets "
+             "roughly 1/h_max of the density the one-step model enjoys. A multiplier > 1 "
+             "asks the different question - can direct prediction work at all - rather "
+             "than whether it is more sample-efficient.",
+    )
     ap.add_argument("--n-points", type=int, default=45_000)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--n-shards", type=int, default=1)
@@ -151,36 +160,42 @@ def main() -> None:
                 )
                 e_roll = rollout_errors(m_roll, Zte, starts, args.horizons)
 
-                # (b) horizon-conditioned, matched pairs and matched parameters
-                hd = horizon_dataset(Ztr, n_pairs=len(Xs), h_max=args.h_max, seed=seed)
-                m_dir, i_dir = fit(
-                    hd["X"], hd["Y"], budget=args.budget, epochs=args.epochs, seed=seed,
-                    horizon=True, H=hd["H"], h_max=args.h_max,
-                )
-                e_dir = direct_errors(m_dir, Zte, starts, args.horizons)
-
-                for j, h in enumerate(args.horizons):
-                    row = {
-                        "system": name, "seed": seed, "horizon": h,
-                        "lyap_time": spec.lyap_time_per_step * h,
-                        "err_rollout": e_roll[j], "err_direct": e_dir[j],
-                        "err_parrot": par[j],
-                        "params_rollout": i_roll["n_params"],
-                        "params_direct": i_dir["n_params"],
-                        "lyap_max": spec.lyap_max,
-                        "kaplan_yorke_dim": spec.invariants["kaplan_yorke_dim"],
-                    }
-                    rows.append(row)
-                    log.result(**row)
-                print(
-                    f"  seed {seed}: "
-                    + " ".join(
-                        f"h{h}:{e_roll[j]:.3f}/{e_dir[j]:.3f}"
-                        for j, h in enumerate(args.horizons)
+                # (b) horizon-conditioned, at one or more training-pair budgets
+                for mult in args.direct_pair_multipliers:
+                    hd = horizon_dataset(
+                        Ztr, n_pairs=len(Xs) * mult, h_max=args.h_max, seed=seed
                     )
-                    + f"  (rollout/direct, {time.time()-t0:.0f}s)",
-                    flush=True,
-                )
+                    m_dir, i_dir = fit(
+                        hd["X"], hd["Y"], budget=args.budget, epochs=args.epochs, seed=seed,
+                        horizon=True, H=hd["H"], h_max=args.h_max,
+                    )
+                    e_dir = direct_errors(m_dir, Zte, starts, args.horizons)
+
+                    for j, h in enumerate(args.horizons):
+                        row = {
+                            "system": name, "seed": seed, "horizon": h,
+                            "direct_pair_multiplier": mult,
+                            "n_pairs_direct": len(hd["X"]),
+                            "n_pairs_rollout": len(Xs),
+                            "lyap_time": spec.lyap_time_per_step * h,
+                            "err_rollout": e_roll[j], "err_direct": e_dir[j],
+                            "err_parrot": par[j],
+                            "params_rollout": i_roll["n_params"],
+                            "params_direct": i_dir["n_params"],
+                            "lyap_max": spec.lyap_max,
+                            "kaplan_yorke_dim": spec.invariants["kaplan_yorke_dim"],
+                        }
+                        rows.append(row)
+                        log.result(**row)
+                    print(
+                        f"  seed {seed} x{mult}: "
+                        + " ".join(
+                            f"h{h}:{e_roll[j]:.3f}/{e_dir[j]:.3f}"
+                            for j, h in enumerate(args.horizons)
+                        )
+                        + f"  (rollout/direct, {time.time()-t0:.0f}s)",
+                        flush=True,
+                    )
 
     keys = sorted({k for r in rows for k in r})
     with (RESULTS / (f"direct_vs_rollout" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
