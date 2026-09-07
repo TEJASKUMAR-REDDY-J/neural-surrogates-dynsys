@@ -48,11 +48,21 @@ RESULTS = ROOT / "results" / "r3"
 LOGS = ROOT / "logs"
 
 
-def r2_systems(limit: int) -> list[str]:
+def r2_systems(limit: int, bounded_only: bool = False) -> list[str]:
     path = ROOT / "results" / "r2" / "instruments.csv"
     if not path.exists():
         raise FileNotFoundError("run R2 first")
     rows = list(csv.DictReader(path.open(encoding="utf-8")))
+    if bounded_only:
+        import src.common.systems as _S
+        keep = []
+        for r in rows:
+            try:
+                if not _S.load_spec(r["system"]).unbounded_indices:
+                    keep.append(r)
+            except Exception:  # noqa: BLE001
+                pass
+        rows = keep
     # spread across the chaoticity range rather than taking the first N
     rows.sort(key=lambda r: float(r["lyap_max"]))
     if limit >= len(rows):
@@ -96,12 +106,17 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--n-points", type=int, default=20_000)
+    ap.add_argument(
+        "--bounded-only", action="store_true",
+        help="drop systems carrying an unbounded clock coordinate; see the note in "
+             "systems.load_spec for why they corrupt cross-system regressions",
+    )
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--n-shards", type=int, default=1)
     args = ap.parse_args()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
-    names = r2_systems(args.n_systems)
+    names = r2_systems(args.n_systems, bounded_only=args.bounded_only)
     names = [n for i, n in enumerate(names) if i % args.n_shards == args.shard]
     rows = []
 

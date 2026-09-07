@@ -44,6 +44,8 @@ class SystemSpec:
     invariants: dict = field(default_factory=dict)
     is_map: bool = False
     pts_per_period: int = 100
+    unbounded_indices: list = field(default_factory=list)
+    nonautonomous: bool = False
 
     @property
     def dt(self) -> float:
@@ -150,14 +152,30 @@ def load_spec(name: str, pts_per_period: int = 100) -> SystemSpec:
 
     m = getattr(flows, name)()
     lam = float(np.atleast_1d(m.maximum_lyapunov_estimated).ravel()[0])
+    # dysts lifts non-autonomous systems by appending a time-like variable, and flags those
+    # coordinates in `unbounded_indices`. Those coordinates are monotone clocks: on
+    # ForcedVanDerPol the third coordinate runs 869 -> 2693, strictly increasing. Two
+    # consequences, both fatal for a naive cross-system study:
+    #   1. the clock's test-set values lie entirely outside its training range, so one-step
+    #      prediction becomes pure extrapolation and fails immediately;
+    #   2. a monotone coordinate has near-zero ordinal entropy, so it drags any
+    #      channel-averaged permutation entropy down.
+    # Together those manufacture a spurious correlation between low entropy and poor
+    # predictability that has nothing to do with learnability. Callers must handle or
+    # exclude these systems explicitly.
+    unbounded = list(getattr(m, "unbounded_indices", []) or [])
     return SystemSpec(
         name=name,
         dim=len(np.atleast_1d(m.ic)),
         period=float(m.period),
         lyap_max=lam,
         pts_per_period=pts_per_period,
+        unbounded_indices=unbounded,
+        nonautonomous=bool(getattr(m, "nonautonomous", False)),
         invariants={
             "lyap_max": lam,
+            "n_unbounded": len(unbounded),
+            "nonautonomous": int(bool(getattr(m, "nonautonomous", False))),
             "kaplan_yorke_dim": float(m.kaplan_yorke_dimension),
             "correlation_dim_pub": float(m.correlation_dimension),
             "multiscale_entropy": float(m.multiscale_entropy),
