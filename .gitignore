@@ -32,3 +32,5 @@ Thumbs.db
 # replication battery: regenerable bulk
 all-spikes/**/data/
 all-spikes/**/trajectories/
+all-spikes/**/logs/*console*.log
+all-spikes/**/logs/battery.log
