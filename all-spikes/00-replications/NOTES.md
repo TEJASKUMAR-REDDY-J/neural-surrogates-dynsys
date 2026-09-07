@@ -45,3 +45,53 @@ are unwritten; R0 is the first task and is blocking for everything except R1.
 
 **Next.** R0 (dependency check + metrics library validated against published values on
 Lorenz / logistic / white noise), then R2 and R7, which are near-free.
+
+## 2026-09-07 — cost estimates re-derived; plan rewritten in plain language
+
+**Why.** User asked why some experiments were estimated at 6 hours. Fair challenge: those
+numbers were padded guesses, not arithmetic.
+
+**What was done.** Built a cost model calibrated on the two measurements in `ENVIRONMENT.md`:
+- 133k params, 50k samples, 20 epochs = 17 s  =>  `1.28e-10 s per (param x sample x epoch)`,
+  which implies ~47 GFLOP/s on these two cores. Believable for batched GEMM on this CPU.
+- Below ~1e4 params the model is not FLOP-bound. Per-batch overhead (~150 us) dominates, so
+  small models have a floor of `(samples/256) x epochs x 150us`.
+
+**Result: most estimates were 4-6x too high. Total battery 15-20 h -> ~5-6 h.**
+
+| | old | derived |
+|---|---|---|
+| R1 | 2 h | 1-2 h |
+| R2 | 1 h | 45 min |
+| R3 | 2 h | 15 min |
+| R4 | 6 h | 1.5 h |
+| R5 | 4 h | 1.2 h |
+| R8 | 3 h | 20 min |
+
+**The substantive finding, which changed how the plan is written.** Training is not the
+bottleneck at our scale. A single fit is seconds: the largest cell in R4's grid (1e5 params,
+32k samples, 200 epochs) is 82 s and the median cell is under 5 s. The real costs are:
+1. **R1's combinatorics** — 69e9 elementwise ops at N=4 (65,536 projections x 256 rules x
+   4,096 triples). Nothing to do with ML, and now the longest single experiment in the battery.
+   This was the surprise.
+2. **FSLE in R2** — many perturbed trajectory pairs per system, ~37 min of R2's 45.
+3. **Trajectory generation** for stiff systems, which is the one number the model cannot
+   predict: 0.28 s per 4k-point Lorenz trajectory says nothing about a stiff system needing
+   1000x smaller steps.
+
+**Action taken.** R0 now includes a **timing probe**: run one fit and one trajectory at each
+scale in the grid and replace every estimate with a measurement before committing to the big
+runs. If the probe disagrees with the model, the grid gets rescaled rather than the schedule
+slipping.
+
+**Also.** PLAN.md rewritten so every experiment states, in plain language: what it does, the
+specifics, the hypothesis (H1/H0 and any competing explanation), why we care, and what the
+opposite outcome would tell us. Added a glossary for the recurring terms (rollout, capacity,
+saturation, Lyapunov time, WPE, attractor, coarse-graining).
+
+**One thing the rewrite made clearer than it was before.** R8 is the sharpest experiment in the
+battery and it is 20 minutes. P8 reports that all three architectures fail at long rollout and
+offers a bound, not an explanation. A direct horizon-conditioned model does not compound errors.
+So if the direct model escapes the failure, the cause was compounding; if it fails equally, the
+cause is a system ceiling. That is the Gilpin-vs-Duraisamy dispute, separated for 20 minutes of
+compute. It should probably be promoted ahead of R5.
