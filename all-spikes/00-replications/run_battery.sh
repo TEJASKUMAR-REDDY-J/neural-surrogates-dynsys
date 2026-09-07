@@ -39,6 +39,8 @@ python -u -m src.r1_coarse_grain.run --block-sizes 2 3 4 --k-values 2 3 \
     --escalate-projections 40000 400000 4000000
 
 log "ANALYSIS"
+python -u -m src.analysis.figures
+
 python -u -m src.analysis.run
 
 log "BATTERY COMPLETE"
