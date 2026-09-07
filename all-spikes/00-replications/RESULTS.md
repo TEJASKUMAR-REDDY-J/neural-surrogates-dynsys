@@ -405,13 +405,96 @@ Two flaws in our own design, both ours:
 
 ## R4 — Does a model stop improving no matter how big you make it?
 
-*Running.* This is the crux of the whole project — three published papers disagree about it
-and none of them ran this experiment.
+**In one sentence:** the experiment ran perfectly and **could not answer its own question**,
+because we made the task too easy and the ruler too short. Both are fixed and it is rerunning.
 
-Early signal from a partial run: on one system, prediction skill stayed flat at 17–20 steps
-while the model grew from 1,011 to 46,212 parameters. On another it climbed from 23 to 88
-steps over the same range. **Different systems behave differently** — which is the shape
-this experiment is looking for.
+This is the crux of the project. Three published papers disagree about it and none of them
+ran this experiment. So it is worth being precise about why our first attempt failed.
+
+### What we did
+
+Six systems. For each one, train the same network at **7 sizes** (1,011 up to 99,843
+parameters — a hundredfold range) and with **4 amounts of data** (500 up to 32,000 samples),
+**3 random starts** each. **504 trained models.** Then fit a curve to the errors and ask
+where it is heading.
+
+If the curve flattens out at some error level, that level is a property of the *system* —
+evidence for a real ceiling. If it keeps falling, the limit is us.
+
+### What happened: two ceilings, and both were ours
+
+**Problem 1: the task was too easy.** Here is Aizawa's one-step error as the model grows a
+hundredfold:
+
+```
+params:  1,011   2,196   4,611   9,987  21,891  46,212  99,843
+error:  0.0004  0.0003  0.0003  0.0002  0.0002  0.0003  0.0004
+```
+
+That is not a curve. It is noise. Across all 504 models the smallest error we ever saw was
+**0.00019** — and it was reached by the *smallest* models. The network was not the
+bottleneck; we had hit the floating-point and data noise floor.
+
+The reason is that we sampled each system 100 times per oscillation. Predicting one step
+ahead when the next point is that close is almost trivial — barely harder than drawing a
+straight line. A 1,000-parameter network already does it perfectly.
+
+**Problem 2: the ruler was too short.** Our other measure was "how many steps until the
+forecast goes wrong." We rolled forward 200 steps and stopped.
+
+**33% of the 504 models never went wrong within 200 steps.** They hit the end of the ruler.
+And on Lorenz, 200 steps is only **2.7 Lyapunov times** — less than three natural units of
+chaos. We were asking "when does this fail?" and stopping before it had a chance to.
+
+**Problem 3 (our own fault, differently): no leverage on the key prediction.** Scaling
+theory predicts that the improvement rate should go as 1 divided by the attractor's
+dimension. We picked six systems by name before seeing the data — and they all turned out to
+have almost the *same* dimension:
+
+```
+Lorenz 2.08   Rossler 2.01   Chua 2.11   Halvorsen 2.12   Thomas 2.13   Aizawa 2.35
+```
+
+Testing "does the rate depend on dimension?" when dimension barely varies is testing
+nothing. The correlation we computed (−0.486) is noise, and we are not reporting it as a
+result.
+
+### What we could still read off it
+
+One system, Thomas, *was* hard enough to show a real trend: one-step error fell cleanly from
+0.0025 to 0.0007 as the model grew. So the machinery works — the other five systems were
+just too easy.
+
+And a hint worth carrying forward: **bigger models did not improve the *structural* error at
+all.** Averaged across systems, the correlation between model size and getting the frequency
+spectrum right was **−0.085** — very slightly *negative*. Pointwise accuracy and "did it
+capture the shape of the attractor" appear to come apart. That is the pattern five separate
+papers have noticed in passing. But we cannot lean on it here, because the pointwise numbers
+it is being compared against are noise. It rides along on the rerun.
+
+### The fix
+
+Three changes, all measured before committing:
+
+| | before | after | effect |
+|---|---|---|---|
+| samples per oscillation | 100 | **20** | one-step error 0.0002 → **0.0057**, so capacity matters again |
+| rollout length | 200 steps | **1,000 steps** | 2.7 → **67 Lyapunov times** on Lorenz |
+| attractor dimensions covered | 2.01–2.35 | **2.0–16.5** | the rate-versus-dimension test finally has something to measure |
+
+We verified the first two on a single test fit before queuing 378 more:
+
+```
+one-step 0.0057  ->  h50 0.38  ->  h200 1.33  ->  h1000 1.60      not censored
+```
+
+The error now grows all the way out, saturating above 1.0 (worse than guessing the average) —
+exactly the regime where "does it stop improving?" is a real question.
+
+**This is what the battery is for.** Had we skipped the calibration pass and run this as the
+main experiment, we would have concluded "error keeps falling, so there is no intrinsic
+ceiling" — and that conclusion would have been about our sampling rate, not about the
+systems.
 
 ## R5 — Does more chaos really need a *smaller* model?
 

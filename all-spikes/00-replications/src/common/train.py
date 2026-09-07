@@ -131,6 +131,7 @@ def evaluate_rollout(
     n_starts: int = 64,
     seed: int = 0,
     threshold: float = 0.4,
+    report_horizons: tuple = (1, 10, 50, 100, 200, 500, 1000),
 ) -> dict:
     """Full rollout evaluation: pointwise error, VPT, and the structural measures.
 
@@ -157,7 +158,17 @@ def evaluate_rollout(
     long_true = test_traj[1 : 1 + long_steps]
     finite = np.all(np.isfinite(long_pred))
 
+    # Error at fixed horizons. VPT is censored whenever skill outlives the rollout, which
+    # happened on a third of R4's fits, so a fixed-horizon error is the honest measure.
+    fixed = {
+        f"err_h{h}": (float(err[h - 1]) if h <= len(err) else float("nan"))
+        for h in report_horizons
+    }
+
     return {
+        **fixed,
+        "vpt_censored": bool(len(np.flatnonzero(err > threshold)) == 0),
+        "rollout_steps": int(steps),
         "smape_1": float(smape(true[:, 0], pred[:, 0])),
         "smape_all": float(smape(true, pred)),
         "nrmse_1": float(nrmse(true[:, 0], pred[:, 0])),

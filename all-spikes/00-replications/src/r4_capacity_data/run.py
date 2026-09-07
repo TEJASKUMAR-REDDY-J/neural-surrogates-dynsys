@@ -65,7 +65,19 @@ def main() -> None:
     ap.add_argument("--n-trains", type=int, nargs="+", default=[500, 2_000, 8_000, 32_000])
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--epochs", type=int, default=200)
-    ap.add_argument("--steps", type=int, default=200)
+    ap.add_argument(
+        "--steps", type=int, default=200,
+        help="rollout length for evaluation. The first pass used 200, which on Lorenz at "
+             "100 points per period is only 2.68 Lyapunov times, and 33 percent of fits "
+             "outlived it - so valid prediction time was censored and could not show "
+             "saturation.",
+    )
+    ap.add_argument(
+        "--pts-per-period", type=int, default=100,
+        help="samples per dominant oscillation. At 100 the one-step map is nearly trivial: "
+             "one-step error bottomed out at 2e-4 regardless of capacity. A coarser sampling "
+             "makes the map genuinely nonlinear and buys more Lyapunov time per step.",
+    )
     ap.add_argument("--n-test", type=int, default=4_000)
     ap.add_argument("--n-points", type=int, default=45_000)
     ap.add_argument("--shard", type=int, default=0)
@@ -82,8 +94,9 @@ def main() -> None:
     with RunLog("r4_capacity_data", vars(args), "cli", LOGS) as log:
         for name in args.systems:
             try:
-                spec = S.load_spec(name)
-                X = S.trajectory(name, n=args.n_points, use_cache=True)
+                spec = S.load_spec(name, pts_per_period=args.pts_per_period)
+                X = S.trajectory(name, n=args.n_points, pts_per_period=args.pts_per_period,
+                                 use_cache=True, timeout_s=240)
             except Exception as e:  # noqa: BLE001
                 log.failure(system=name, stage="setup", error=f"{type(e).__name__}: {e}"[:200])
                 print(f"{name}: SETUP FAILED {e}", flush=True)
@@ -113,6 +126,8 @@ def main() -> None:
                                 "kaplan_yorke_dim": spec.invariants["kaplan_yorke_dim"],
                                 "corr_dim_pub": spec.invariants["correlation_dim_pub"],
                                 "dim": spec.dim,
+                                "pts_per_period": args.pts_per_period,
+                                "rollout_steps": args.steps,
                                 "lyap_time_per_step": spec.lyap_time_per_step,
                                 **{k: v for k, v in ev.items() if k != "err_by_step"},
                                 "wall_s": round(time.time() - t0, 2),

@@ -26,6 +26,21 @@ python -u -m src.r8_direct_vs_rollout.run --h-max 512 \
     --horizons 1 2 4 8 16 32 64 128 256 512 --direct-pair-multipliers 1 4 --shard 1 --n-shards 2 &
 wait
 
+log "R4b crux rerun: coarser sampling, long rollout, real spread of attractor dimension"
+# The first pass could not answer its own question. Both dependent variables were saturated:
+# valid prediction time hit the 200-step measurement ceiling on 33% of fits, and one-step
+# error bottomed out at 2e-4 regardless of capacity because a 3-D ODE sampled 100 times per
+# oscillation is nearly trivial to step forward. And all six systems happened to have almost
+# the same attractor dimension (2.01 to 2.35), so the alpha ~ 1/d prediction had no leverage.
+#
+# Three fixes: sample 5x more coarsely (one-step error 0.0002 -> 0.0057, and each step is
+# worth 5x more Lyapunov time), roll out 1000 steps instead of 200 (67 Lyapunov times on
+# Lorenz, versus 2.7), and choose systems spanning Kaplan-Yorke dimension 2.0 to 16.5.
+R4B_SYSTEMS="Lorenz Rossler Thomas HyperCai HenonHeiles Bouali2"
+python -u -m src.r4_capacity_data.run --systems $R4B_SYSTEMS     --pts-per-period 20 --steps 1000 --n-trains 2000 8000 32000     --n-points 45000 --shard 0 --n-shards 2 &
+python -u -m src.r4_capacity_data.run --systems $R4B_SYSTEMS     --pts-per-period 20 --steps 1000 --n-trains 2000 8000 32000     --n-points 45000 --shard 1 --n-shards 2 &
+wait
+
 log "ANALYSIS + FIGURES"
 python -u -m src.analysis.run
 python -u -m src.analysis.figures
