@@ -136,3 +136,82 @@ mutually incompatible answers and none ran the controlled per-system capacity ×
 **Next.** Convert this into candidate research directions, evaluate against the four
 criteria, and present the top three to the user for selection. Do not start experiments
 before that choice is made.
+
+## 2026-09-07 — Session 2: P1–P4 follow-ups; replication battery planned
+
+**What.** User asked four targeted questions on P1–P4, set an append-only constraint on
+`background/02-paper-extractions.md`, and asked for an end-to-end test of the experiments in
+the corpus, delivered as a separate document with a clean structure for runs and logs.
+
+**Append-only rule.** Recorded in `CLAUDE.md`. `02-paper-extractions.md` grew from 993 to
+1392 lines by appending Parts F and G; all eight P entries verified intact after the append.
+
+**New sources (A12–A18).** Seven, all verified this session except A16 (partial — journal
+page 403; flagged in the doc).
+
+**Findings that change the picture.**
+1. **A13, Dzwinel & Magiera 2015.** Fixed exactly the limitation flagged in P1: a cheaper
+   coarse-graining algorithm reaches N=7, where the irreducible ECA set converges to four
+   rules — {30, 45, 106, 154} — which is precisely Wuensche's set of strong chain-rules *and*
+   the complete set of strong surjective (highly irreversible) automata. So the boundary of
+   reducibility is picked out by an **algebraic** property, information destruction, not a
+   dynamical one. Also: the positive class in any ECA learnability study is 4/256.
+2. **A12, the 2006 PRE extension.** The probability of finding a coarse-grained description
+   **approaches unity at coarser scales**, and large-scale update rules have low Kolmogorov
+   complexity obeying a scaling law. Closure is therefore *scale-indexed*, not binary — which
+   reframes the question as "at what scale" and stakes out that framing in 2006.
+3. **A15/A16 — the learnability translation already exists.** Garland, James & Bradley (PRE
+   2014) show weighted permutation entropy tracks achievable forecast error across methods
+   (logarithmic trend, explicitly not a bound, proposed as a *method–data mismatch* diagnostic:
+   WPE says some method could do better, not which). Pennekamp 2019 replicates across 461
+   ecological series and gives the intrinsic-vs-realised predictability distinction. Neither
+   covers neural surrogates, rollout, or architecture selection.
+4. **A17 is a serious novelty threat.** *Exploring Accuracy Law for Deep Time Series
+   Forecasters* (2510.02729): over **4,700 trained models**, an empirical law relating the
+   **minimum attainable error** to **window-wise pattern complexity**, used to identify
+   saturated benchmarks. That is "predict the error floor from a pre-training statistic", at a
+   scale we cannot match, published within the year. It is univariate and does not touch
+   rollout or architecture choice — but any direction we pick must state in one sentence how
+   it differs. **Read in full before the direction is chosen.**
+5. **A14, the Chaos Decision Tree Algorithm** gives a noise-robust, published pipeline that
+   decides stochastic / periodic / chaotic before any chaos machinery is applied, and a
+   degree-of-chaos scalar that does not require estimating λ.
+
+**Positions taken on the user's four questions.**
+- *P1:* limitations were compute-bound search and an undeclared projection space; both now
+  addressed in the literature, and the fix makes the CA substrate look worse for us, not
+  better (4/256 base rate, scale-indexed closure).
+- *P2:* λ is not "wrong for assuming determinism" — it is asymptotic and infinitesimal, and
+  separately its *estimator* needs determinism. Better instruments exist and are cheap: FSLE,
+  ε-entropy, weighted permutation entropy, the modified 0-1 test, CDTA. WPE now enters our
+  design as a **baseline to beat**, not a feature.
+- *P3:* agreed with the user that small parameter counts are an advantage here — NNPT's regime
+  is our hardware's regime. But the real weakness is not model size, it is that the
+  non-monotonicity rests on a **two-point depth grid** with no reported seeds at a single 1%
+  tolerance. The upgrade is a near-continuous width axis, seeds at every point, and a
+  **threshold-sensitivity check across four tolerances** — the cheapest high-value test in the
+  battery. Also: "required capacity at tolerance" and "achievable error floor" are different
+  quantities and may disagree.
+- *P4:* user's critique is right and generalises. Task2Vec's score is **additive** in task and
+  model; Model2Vec's per-model bias is a rank-one correction. Neither can express an
+  interaction — and the interaction is the entire phenomenon in our domain (DeepONet worst on
+  regular meshes, best on every irregular one; CNO 1.05× on Poisson, 12.2× on Black–Scholes).
+  Their own limitations section concedes it. Consequence: any spike here must produce a
+  task × architecture outcome **matrix**, report the rank-1 baseline, and test whether
+  pre-training statistics predict the residual. This is the same objection as V-information's
+  family-relativity, in different vocabulary.
+
+**Result.** `all-spikes/00-replications/` created: `PLAN.md` (R0–R8, each with claim under
+test, design, dependent variables, cost on this machine, and pre-registered kill criteria),
+`NOTES.md`, directory scaffold, and `src/common/runlog.py` (run identity + JSONL manifest
+logging, self-check passes). Total estimated compute ~15–20 h.
+
+**Pre-registered kill criteria now on record.** R1: if the reducible fraction moves with the
+width of the projection search space, CA-based learnability classification is dead. R3: if
+WPE + λ explain ≥85% of surrogate-error variance across systems, the learned-predictor
+direction is not worth pursuing. R7 runs *before* direction selection, because if context
+parroting matches our trained models then every leap-horizon claim downstream is unfounded.
+
+**Nothing has been run yet.** R0 is the first task and blocks everything except R1.
+
+**Next.** Await user go-ahead to execute the battery, starting with R0 → R2 → R7.

@@ -991,3 +991,402 @@ speedup, implicit discontinuity error map); A11's numbers (≈11 pp from test-ti
 zero accuracy without the puzzle ID; recursion saturates at step 1); A9's verbatim
 statements; P3's exact capacity numbers and Chirikov threshold; P1's 240/256 count and the
 16-rule fail-set; P8's per-architecture degradation factors.
+
+---
+---
+
+# Part F — follow-ups requested on P1–P4
+
+Added 2026-09-07 in response to user questions. **This document is append-only**: nothing
+above this line has been or will be removed or renumbered.
+
+---
+
+## F.1 — P1: the limitations explained, and what the field has done about "solving system complexity"
+
+### F.1.1 The three limitations, unpacked
+
+**(a) The search was capped at N ≤ 4, and the procedure is a test, not a constructor.**
+Israeli & Goldenfeld do not have an algorithm that *finds* a coarse-graining. They have a
+consistency condition that *checks* a candidate `(N, P)` pair. Finding one means brute-force
+enumeration: for block size N the block alphabet has `2^N` symbols, and the number of
+projections onto a smaller alphabet grows super-exponentially. At N=4 the alphabet is 16 and
+a binary projection is one of `2^16`; at N=7 it is one of `2^128`. So "240 of 256 rules are
+reducible" is a statement about **what a brute-force search up to N=4 could reach**, not
+about rule space. Their own words: *"We don't know if our inability comes from limited
+computing power or from something deeper."*
+
+**(b) The free parameter is the projection space, and a wide enough search manufactures
+closure.** This is the rigour hazard. If we ever use "admits a closed coarse description" as
+a learnability label, the label is only as meaningful as the pre-declared search space. Widen
+the search and everything becomes reducible.
+
+**(c) Their fail set was not characterised.** 16 rules resisted, but they could say nothing
+about *why*, and could not even establish the CIR status of rules 18, 54, 126.
+
+### F.1.2 What has been done since — and it substantially resolves (a) and (c)
+
+**A12 — Israeli & Goldenfeld (2006), the extended version.** *Coarse-graining of cellular
+automata, emergence, and the predictability of complex systems*, Phys. Rev. E **73**, 026203.
+Verification: abstract retrieved verbatim. Two results that are not in the PRL and that
+matter to us more than the PRL does:
+
+- The large-scale dynamics of CA is **very simple as measured by the Kolmogorov complexity of
+  the large-scale update rule**, and this obeys a **novel scaling law**.
+- Consequently *"the probability of finding a coarse-grained description of CA approaches
+  unity as one goes to increasingly coarser scales."*
+
+**Read that second point carefully — it is close to fatal for the naive framing.** If almost
+everything becomes coarse-grainable at a coarse enough scale, then "does a closed coarse
+description exist?" is not a binary property of a system. It is a **scale-indexed** property,
+and the only meaningful question is *at what scale does closure appear*. That converts a
+proposed classification problem into a regression on a scale variable — which is a better
+problem, but a different one, and it is the version already staked out in 2006.
+
+**A13 — Dzwinel & Magiera (2015).** *Irreducible elementary cellular automata found*,
+J. Comput. Sci. **11**, 300–308. Verification: abstract retrieved verbatim. This is the
+direct answer to limitation (a) and (c):
+
+- They give **a new coarse-graining algorithm with substantially lower computational load**,
+  explicitly because Israeli–Goldenfeld's brute force gave *"very fragmentary"* results that
+  *"do not allow to draw viable conclusions about reducibility of ECA for larger grain sizes
+  than N = 4."* Our limitation (a), stated by the people who fixed it.
+- Pushing to larger N, the count of irreducible ECA **decreases with grain size** and at
+  **N = 7 converges to a stable set of exactly four inequivalent rules: {30, 45, 106, 154}.**
+- And the characterisation: this is *"the complete set of strong chain-rules representing
+  maximally chaotic automata"* in Wuensche's taxonomy, and simultaneously *"the complete set
+  of strong surjective automata, i.e. highly irreversible automata."*
+
+**Why this is the most useful thing found for P1.** The boundary of coarse-grainability in
+ECA space is not fuzzy and not an artefact — it is four rules, and they are picked out by an
+**algebraic** property (surjectivity ⇒ irreversibility ⇒ information destruction), not by a
+dynamical one. That is a real, sharp, non-obvious link: *what makes a system resist reduction
+is that its update map destroys information*. It also means the ECA substrate has a
+**4-out-of-256 positive class**. Any "predict learnability from rule structure" study on ECA
+is a 1.6% base-rate problem, which is a very different experiment from the one people imagine
+they are running.
+
+### F.1.3 The wider "solving system complexity" landscape
+
+The coarse-graining question is one corner of a large, mostly disconnected literature on
+reducing complex systems to closed descriptions. The families, and what each would give us:
+
+| Family | Core idea | Bearing on us |
+|---|---|---|
+| **CA coarse-graining** (Israeli–Goldenfeld; Dzwinel–Magiera) | block-and-project; exact closure as a consistency condition | exact, discrete, decidable — the only family where "closed description exists" is a *provable* statement rather than an approximation quality |
+| **Renormalisation group** | integrate out short scales; fixed points and relevant operators | the physics ancestor of all of this; gives the language of *relevant vs irrelevant* degrees of freedom |
+| **Mori–Zwanzig / optimal prediction** | exact projection of full dynamics onto resolved variables, producing a Markovian term + a memory kernel + noise | **the continuous-system analogue of the CA result, and the honest one**: closure is never exact, the price of coarse-graining is an explicit memory term. Directly relevant to "why does rollout fail" — the memory kernel is what a one-step surrogate discards |
+| **Computational mechanics / ε-machines** (see A7) | causal states = the minimal sufficient statistic for prediction; statistical complexity | the only framework that gives a *computable optimum*, so "model failed" separates from "task is hard" |
+| **Koopman / DMD lifting** | represent nonlinear dynamics as a linear operator on lifted observables | the "make it reducible by changing representation" move, in continuous form |
+| **Model order reduction** (POD/PCA, balanced truncation, reduced-basis) | project onto a low-dimensional empirical subspace | supplies the empirical intrinsic dimension `d` that P5's `α ≈ 1/d` needs |
+| **Closure modelling in turbulence / LES** | model the unresolved stresses | the engineering version; decades of evidence that closure is systematically hard and system-specific |
+| **Causal emergence / information closure** | quantify when a macro description is more informative or more causally complete than the micro one | gives *graded* rather than binary closure — the thing A12's result says we actually need |
+
+**The synthesis, and it is worth stating plainly.** Israeli–Goldenfeld say closure often
+exists in discrete systems. Mori–Zwanzig says that in continuous systems closure is *never*
+exact and the residue is a memory kernel. Those two are not in conflict — they are the same
+statement about different alphabets — but **the neural-surrogate literature cites neither**,
+and instead rediscovers the memory kernel empirically as "autoregressive rollout error". P8's
+unexplained architecture-invariant rollout failure and Mori–Zwanzig's memory term are
+plausibly the same object. That connection is not made anywhere in the corpus we have read,
+and it is cheap to test.
+
+---
+
+## F.2 — P2: what is better than the Lyapunov exponent, and does any of it translate to learnability?
+
+First a correction of framing, because it matters for how we cite this. **The Lyapunov
+exponent is not "proven wrong because it assumes determinism."** Two separate problems, and
+conflating them will get us caught:
+
+1. **It is asymptotic and infinitesimal.** λ describes the growth of an *infinitesimal*
+   perturbation as `t → ∞`. Real errors are finite and real horizons are finite. P2's coupled
+   regular+chaotic example shows the failure concretely: global λ predicts `T_p ~ 1/λ`
+   independent of coupling, but the true answer is `T_p ~ ε^{-2}`. λ is not wrong, it is
+   answering a different question.
+2. **Estimating λ from data requires assuming determinism**, and above the noise scale chaos
+   and noise are observationally identical (P2). So the *estimator* inherits an assumption
+   the *definition* does not need.
+
+### F.2.1 The better instruments
+
+| Instrument | What it measures | Why better than λ | Cost |
+|---|---|---|---|
+| **FSLE** `λ(δ)` (P2) | growth rate of a *finite* perturbation δ | scale-resolved; reveals plateaus ⇒ emergent macroscopic levels; correct in the diffusive regime where λ is not | cheap; needs trajectory ensembles |
+| **ε-entropy** `h(ε)` (P2) | information rate at resolution ε | KS entropy without the `ε→0` fiction; the natural home for "predictability at a stated resolution" | moderate; needs symbolisation |
+| **Permutation entropy / weighted PE** (Bandt–Pompe 2002; Fadlallah 2013) | ordinal-pattern complexity | ordinal ⇒ **robust to noise and monotone transforms**, no embedding parameters, converges to KS entropy rate for ergodic sources (Amigó) | very cheap, O(n) |
+| **0-1 test for chaos, modified** (Gottwald–Melbourne; Eyébé Fouda mod.) | K-statistic → 1 chaotic, → 0 periodic, from mean-squared displacement of a driven 2D system | needs no phase-space reconstruction, no embedding dimension, no λ estimation; noise-robust | very cheap |
+| **Chaos Decision Tree Algorithm** (A14) | full pipeline: stochastic / periodic / chaotic | the practical answer to "is λ even applicable here" | cheap, code published |
+| **Statistical complexity / ε-machines** (A7) | minimal sufficient statistic; computable optimal error | the only one that gives an *optimum* to compare a model against | expensive |
+| **Covariant Lyapunov vectors, finite-time LEs** | directional, time-local instability | resolves *where* on the attractor instability lives, not just the average | moderate |
+
+**A14 — Toker, Sommer & D'Esposito (2020).** *A simple method for detecting chaos in nature*,
+Communications Biology **3**, 11. Verification: full metadata + detailed method description
+retrieved. The **Chaos Decision Tree Algorithm**, four steps:
+1. **Stochasticity test** — permutation entropy as the test statistic against **Amplitude
+   Adjusted Fourier Transform** and **Cyclic Phase Permutation** surrogates. If the series' PE
+   sits inside the surrogate distribution, call it stochastic and stop.
+2. **De-noising** — Schreiber's nonlinear noise-reduction algorithm by default.
+3. **Oversampling correction** — detect and downsample.
+4. **Chaos test** — the **modified 0-1 test**, giving `K → 1` chaotic, `K → 0` periodic.
+Permutation entropy is reused at the end as a **proxy for the degree of chaos**
+(order 5, lag 1).
+Validation: a large battery — logistic, cubic, Lorenz, Rössler, Hénon, Ikeda, generalised
+Hénon (hyperchaotic), Poincaré oscillator, ARMA, random walks, coloured noise, cyclostationary
+processes, plus biological simulations and empirical data (laser, star flux, NAO index,
+tremors, HRV). White noise added **up to 40% of the data's standard deviation**. Reported
+near-perfect classification even at high noise, and good behaviour at 1,000–5,000 points. One
+honest failure: the noise-driven sine map is consistently misclassified as chaotic. Their
+applied result: **heart rate variability is stochastic, not chaotic**, contradicting a
+long-standing claim.
+
+*Why we want this.* It is a pre-flight check. Before we assert anything about a system's
+learnability we should know whether the classical chaos machinery even applies to it. And it
+gives a defensible **degree-of-chaos scalar (K, or PE) that is noise-robust**, which λ is not.
+
+### F.2.2 Has anyone connected these to learnability? Yes — and this is the most important
+### thing found today
+
+The user asked exactly the right question. The answer is that a small, mostly-ignored
+literature has been drawing precisely this correlation since 2014, and **none of it appears in
+the ML surrogate literature**.
+
+**A15 — Garland, James & Bradley (2014).** *Model-free quantification of time-series
+predictability*, Phys. Rev. E **90**, 052910 (`arXiv:1404.6823`). Verification: full HTML text
+read.
+- Claim: **weighted permutation entropy (WPE) correlates with achievable forecast accuracy**,
+  across forecasting methods, with no model of the system.
+- WPE: ordinal patterns over windows of length ℓ, each pattern weighted by the squared
+  deviation of its window from the window mean (amplifies real structure, suppresses
+  noise-driven patterns), Shannon entropy over pattern frequencies, normalised by `log2(ℓ!)`
+  to land in [0,1].
+- Data: 120 real time series of processor instructions-per-cycle on an Intel i7-2600 —
+  `col_major` (simple, near-periodic), `403.gcc` (near-random), `dgesdd` split into 6 regimes.
+- Forecasters: random walk, naive mean, `auto.arima`, and **LMA (Lorenz Method of Analogues)**
+  — nearest-neighbour prediction in delay-coordinate space. One-step iterative, fit on 90%.
+- Result: error (MASE) rises with WPE along a fitted **logarithmic** trend
+  `WPE ≈ a·log(b·MASE + 1)`, `a ≈ 0.0797`, `b ≈ 1520`. Examples: `col_major` WPE 0.513 → LMA
+  MASE 0.050 (20× better than random walk); `403.gcc` WPE 0.943 → best MASE 1.138 (i.e. no
+  better than random walk).
+- **It is a trend with scatter, explicitly not a hard bound.** Their proposed use is a
+  *diagnostic*: a point far off the curve means **method–data mismatch** — the series has more
+  exploitable structure than the model is exploiting. `col_major` with `auto.arima` sits off
+  the curve; the same data with LMA sits on it.
+- Their own caution, which we should adopt verbatim: **WPE tells you that *some* method could
+  do better; it does not tell you *which*.**
+- Limitations: three programs, four forecasters, one error metric; MASE pathologies on
+  oscillatory/non-stationary data; ℓ chosen heuristically; regime segmentation was *"visual
+  and subjective"*.
+
+**A16 — Pennekamp et al. (2019).** *The intrinsic predictability of ecological time series and
+its potential to guide forecasting*, Ecological Monographs, `10.1002/ecm.1359`. Verification:
+**partial** — journal page returned 403; content below is from the indexed article text
+retrieved via search, not from a full read. Flag before citing.
+- **461 ecological time series**; weighted permutation entropy vs square-root-transformed
+  nRMSE; forecast error increases with PE.
+- Introduces the distinction we need: **intrinsic predictability** (a property of the process,
+  estimated model-free) vs **realised predictability** (what a given model actually achieved).
+  Points *above* the PE–error curve are model failures; points *below* are… suspicious.
+- They argue the model-free nature of PE is what makes **cross-system comparison** possible,
+  which is exactly our use case.
+
+**A17 — Wang et al. (2025/26).** *Exploring Accuracy Law for Deep Time Series Forecasters: An
+Empirical Study*, `arXiv:2510.02729`. Verification: abstract verbatim + metadata.
+**This is the closest thing to the proposal's core hypothesis that exists, and it must be
+read in full before we commit to a direction.**
+- They ask explicitly: *"how to estimate the performance upper bound of deep time series
+  forecasters?"*, starting from the community consensus that forecasting *"inherently faces a
+  non-zero error lower bound."*
+- Their move: classical **series-wise** predictability metrics are the wrong granularity,
+  because deep models are sequence-to-sequence over windows. They introduce a quantitative
+  measure of **window-wise pattern complexity**.
+- Evidence: **over 4,700 newly trained deep forecasting models**. They report a consistent
+  empirical relationship between the **minimum attainable error** and window-wise complexity
+  — the **"accuracy law"**.
+- Downstream use: identifying **saturated benchmark tasks** (where no further progress is
+  available) and deriving a training strategy for time-series foundation models.
+
+*Bearing on us.* This is a "predict the achievable error before training, from a complexity
+statistic" result at a scale we cannot match, published in the last year. It does **not**
+cover dynamical-systems surrogates, rollout stability, or architecture *selection*, and it is
+univariate. But it means the framing "estimate the error floor from a data statistic" is now
+occupied territory for time series. We must position against it explicitly.
+
+**A18 — Wang, Klee & Roos (2025).** *Time Series Forecastability Measures*,
+`arXiv:2507.13556`. Verification: abstract verbatim. Proposes **spectral predictability score**
+plus **largest Lyapunov exponent** as pre-training forecastability metrics; validated on
+synthetic data and M5; reports *"strong correlation with the actual forecast performance of
+various models"*. Practical framing: decide which products are worth forecasting at all.
+Note the tension with A1 — this paper is happy to use λ as a forecastability proxy on
+real-world retail data, while Gilpin finds λ decorrelates from skill on chaotic systems.
+Both cannot be generally true; the resolution is probably that they are in different regimes
+(short-horizon and weakly-chaotic vs long-horizon and strongly-chaotic), which is itself a
+testable statement.
+
+### F.2.3 The verdict for us
+
+- **Better chaoticity instruments exist and are cheap**: FSLE, ε-entropy, weighted permutation
+  entropy, the modified 0-1 test, and the CDTA pipeline that decides whether chaos machinery
+  applies at all.
+- **The translation to learnability has been drawn, three times, and never for our setting**:
+  Garland 2014 (120 series, 4 classical forecasters), Pennekamp 2019 (461 ecological series),
+  Wang 2025/26 (4,700 deep models, univariate, window-wise complexity).
+- **What is genuinely unoccupied**: none of these look at *rollout stability*, *architecture
+  selection*, or *multivariate dynamical-system surrogates*, and none of them regress the
+  residual after controlling for capacity and data. The gap is narrower than the proposal
+  assumes, but it is still there — and it is now a *much better specified* gap, because we can
+  state exactly which published curve we are extending and in which direction.
+- **Immediate practical consequence**: WPE and the 0-1 K-statistic go into our feature set as
+  **baselines to beat**, alongside λ. If a learned surrogate-predictor cannot beat weighted
+  permutation entropy — a 20-line, parameter-free statistic from 2002 — we have no result.
+
+---
+
+## F.3 — P3: the user's point about parameter count, and what to do with it
+
+**The user's position:** the small parameter counts in NNPT (1186–2242 params) are an
+advantage for us, not a limitation, and the result should be testable at slightly larger
+scale — order 1e3–1e5.
+
+**Agreed on the strategic point, with one correction on what the actual weakness is.**
+
+**Where the user is right.**
+1. NNPT's regime is *precisely* our hardware regime. A 2-core CPU cannot do transformer-scale
+   anything, but it can do thousands of 1e3–1e5-parameter fits. A paper whose central result
+   lives at 1e3 params is a paper we can replicate, extend, and beat on rigour without a GPU.
+   That is rare and it is worth a lot.
+2. The result is *about capacity*, and capacity sweeps are embarrassingly parallel across
+   seeds and configurations. Our environment audit says ~1–3 min per fit, 5 seeds ≈ 15 min per
+   configuration. A capacity × chaoticity grid is affordable.
+3. Small models make the *equalised-accuracy* protocol meaningful. At large scale everything
+   hits the tolerance and "required capacity" degenerates.
+
+**Where the real weakness is — and it is not that the models are small.**
+The weakness is **resolution and support of the capacity axis, not its magnitude**:
+- The headline non-monotonicity is carried by a **depth change: 3×32 (2242 params) → 2×32
+  (1186 params)**. That is a **two-point grid on a discrete axis**. A 47% drop measured across
+  one architectural step is not a curve; it is two points with a line drawn through them.
+- No seed count is reported in the abstract. "Required capacity" is a threshold-crossing
+  statistic, and threshold-crossing statistics are **high-variance**: one unlucky
+  initialisation moves the smallest passing model by a whole architecture step.
+- "Required capacity at 1% tolerance" is **not the same quantity** as "achievable error
+  floor". They can move in opposite directions: a system can require more capacity to reach 1%
+  *and* have a lower floor. NNPT measures the first; P5's scaling machinery and the
+  Gilpin/Duraisamy dispute are about the second. Treating them as one quantity is a
+  confound waiting to happen.
+- One system family (three-body with a mass knob) and one architecture family. The Chirikov
+  agreement is elegant but it is `n = 1` as a cross-system claim.
+
+**So the upgrade is not "bigger models" — it is a better-measured capacity axis.** Concretely,
+what we can do on this hardware that they did not:
+1. **Continuous capacity axis.** Sweep *width* on a fine geometric grid (e.g. 8, 11, 16, 23,
+   32, 45, 64, 90, 128 hidden units) at fixed depth, so capacity is near-continuous over
+   ~2 orders of magnitude, then repeat at 2–3 depths. This turns a two-point step into a curve.
+2. **Seeds at every grid point.** 5+ seeds, report the *distribution* of the threshold-crossing
+   capacity, not the argmin over one run.
+3. **Threshold sensitivity.** Report required capacity at 0.5%, 1%, 2%, 5% tolerance. If the
+   non-monotonicity survives all four, it is real; if it appears only at 1%, it is a threshold
+   artefact. **This single check is the highest-value cheap test in the whole replication.**
+4. **Both dependent variables.** Required-capacity-at-tolerance *and* fitted error floor from
+   a scaling-law fit (P5). If they disagree, that disagreement is itself a finding, and it
+   speaks directly to the Gilpin-vs-Duraisamy dispute.
+5. **More than one chaos knob.** Three-body mass is one path through parameter space. Cheap
+   alternatives with a clean chaoticity knob: logistic map `r`, Hénon `a`, Lorenz `ρ`, Duffing
+   forcing amplitude, standard map `K` (which *is* Chirikov, so it tests the claimed mechanism
+   directly rather than by analogy).
+6. **A no-subtraction control.** NNPT's whole premise is learning the residual after
+   subtracting an exact solution. Whether the non-monotonicity is a property of *the system*
+   or *of the residual* is unresolved and untested. Run both.
+
+**Honest counterweight.** Even done well, this is a replication-plus-extension. On its own it
+is a workshop-grade contribution, not a headline one. It becomes headline-grade only if the
+non-monotonicity **generalises across system families** and **predicts something** — e.g. if
+the capacity peak location can be predicted in advance from a cheap statistic. That is the
+version worth aiming at, and note it is the same shape as the F.2 finding: a pre-training
+statistic predicting a post-training quantity, with the honest baselines attached.
+
+---
+
+## F.4 — P4: the user's critique of Task2Vec is correct, and it generalises
+
+**User's position:** Task2Vec is not impactful or novel for our purposes; the missing
+task–model interaction is a major limitation, not a footnote; "what architecture for what
+task" need not be true.
+
+**Agreed, and the critique is sharper than the version in the P4 entry above. Here it is
+stated formally, because the formal version is usable in a paper.**
+
+Task2Vec's model-selection score is, structurally:
+
+```
+score(task t, expert m)  =  −d_sym(F_t, F_m)  +  α·d_sym(F_t, t_0)
+Model2Vec:   m_i = F_i + b_i        (a learned per-model bias vector)
+```
+
+Both terms are **additive**: one term depends on the task, one on the model. There is no
+term that depends on *the pair*. In factorisation language, Model2Vec's per-model bias is a
+**rank-one correction** — it can say "this expert is generally good" or "this task is
+generally hard", but it **cannot express** "architecture A is good on task type X and bad on
+task type Y while architecture B is the reverse".
+
+That crossing pattern is exactly an **interaction effect**, and an additive model is
+provably unable to represent it.
+
+**Three pieces of evidence that this is not a nitpick:**
+
+1. **Their own numbers say so.** Symmetric task2vec gives +42.54% relative error increase on
+   iNat+CUB — *worse than the trivial "always use the ImageNet expert" baseline* at +30.18%.
+   The method only works after α-weighting a term for source-task *complexity* (+9.97%). The
+   fix is a hand-designed asymmetry, not a learned interaction, and it is doing all the work.
+2. **Their own limitations section admits it**, in one line: the method *"ignores interactions
+   with the model beyond the task itself"*. The user identified the same gap independently;
+   the authors named it and did not solve it.
+3. **In our domain the interaction is the entire phenomenon.** P7: DeepONet is poor on regular
+   grids and **best on every irregular-mesh case**. CNO in P8: 1.05× degradation on Poisson
+   (best) and 12.2× on Black–Scholes payoff shift (worst). These are textbook crossings. No
+   additive score can rank them correctly. A method that assigns one number per architecture
+   and one per task will get the sign wrong on exactly the cases we care about.
+
+**What this rules out and what it leaves.**
+- **Ruled out:** any "embed the task, look up the best architecture" design. It is
+  mis-specified for this problem, and it will be beaten by "always pick the architecture that
+  is best on average" — which is the baseline it needs to beat, and which A9 confirms is
+  brutally hard to beat in the neighbouring NAS literature.
+- **What remains defensible:** predicting the **interaction term directly**. i.e. the target
+  is not "which architecture is best for task t" but a matrix `E[t, m]` of task × architecture
+  outcomes, and the question is whether that matrix has low rank, and whether its factors
+  correlate with anything measurable in advance. That is a strictly harder and strictly more
+  honest question, and it has a clean negative result available: if `E` is essentially rank-1,
+  then architecture choice does not depend on the task and the whole enterprise is
+  unnecessary — a genuinely useful thing to know and a publishable negative.
+- **Note the connection to A8.** V-information already says learnability is indexed to a
+  predictor family. "Learnability is a property of the (task, family) pair, not of the task"
+  and "the score must contain an interaction term, not a sum" are the **same statement** in two
+  vocabularies. The user's critique of P4 and the V-information verdict are one objection.
+
+**Concrete consequence for design:** any spike in this direction must produce a
+**task × architecture outcome matrix** with enough cells to estimate its rank, and must report
+(i) the rank-1 baseline (best-on-average architecture), (ii) the rank of the residual, and
+(iii) whether pre-training statistics predict the residual factors. Anything less is a
+Task2Vec re-run with the same flaw.
+
+---
+---
+
+# Part G — sources added in this addendum
+
+| ID | Reference | Verification |
+|---|---|---|
+| A12 | Israeli & Goldenfeld (2006), *Coarse-graining of cellular automata, emergence, and the predictability of complex systems*, Phys. Rev. E **73**, 026203 | abstract verbatim |
+| A13 | Dzwinel & Magiera (2015), *Irreducible elementary cellular automata found*, J. Comput. Sci. **11**, 300–308, doi:10.1016/j.jocs.2015.07.001 | abstract verbatim |
+| A14 | Toker, Sommer & D'Esposito (2020), *A simple method for detecting chaos in nature*, Communications Biology **3**, 11 | full metadata + detailed method extraction |
+| A15 | Garland, James & Bradley (2014), *Model-free quantification of time-series predictability*, Phys. Rev. E **90**, 052910 / `arXiv:1404.6823` | full HTML text read |
+| A16 | Pennekamp et al. (2019), *The intrinsic predictability of ecological time series and its potential to guide forecasting*, Ecological Monographs, doi:10.1002/ecm.1359 | **PARTIAL — indexed text only, journal page 403. Verify before citing.** |
+| A17 | Wang et al. (2025/26), *Exploring Accuracy Law for Deep Time Series Forecasters: An Empirical Study*, `arXiv:2510.02729` | abstract verbatim + metadata. **Read in full before choosing a direction.** |
+| A18 | Wang, Klee & Roos (2025), *Time Series Forecastability Measures*, `arXiv:2507.13556` | abstract verbatim |
+
+**Standing threat register update.** A17 is a new entry at the top of the challenges table:
+a 4,700-model empirical law relating minimum attainable forecasting error to a pre-training
+complexity statistic. It does not cover our setting (dynamical-system surrogates, rollout,
+architecture selection, multivariate), but it occupies the framing. Any direction we pick must
+say in one sentence how it differs from the accuracy law.

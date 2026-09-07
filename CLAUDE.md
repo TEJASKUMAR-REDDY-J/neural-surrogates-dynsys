@@ -5,6 +5,12 @@
 (what counts as a good research question), `draft-format/` (CAISc 2026 LaTeX template).
 **Never edit any file under `autovoila-main/`.** Read it, follow it, leave it alone.
 
+## Append-only documents
+`background/02-paper-extractions.md` is **append-only**. The user relies on its numbering
+(P1-P8, A1-A18) and content for their own work. New material goes in a new Part at the end;
+existing entries are never deleted, renumbered, reworded or "cleaned up". Corrections are
+added as new text that names what it corrects.
+
 ## Layout
 - `autovoila-main/` — instructions (read-only)
 - `all-spikes/<spike-name>/` — one directory per research idea; all artifacts for that
