@@ -27,6 +27,10 @@ from .models import HorizonMLP, count_params, mlp_for_budget
 # with TORCH_THREADS if a future experiment is actually FLOP bound.
 torch.set_num_threads(int(os.environ.get("TORCH_THREADS", "1")))
 
+# How far outside the true trajectory's own range a rollout may wander before we
+# call it diverged. 10x is generous - a real forecast never approaches it.
+DIVERGENCE_FACTOR = 10.0
+
 
 def fit(
     X: np.ndarray,
@@ -156,7 +160,15 @@ def evaluate_rollout(
     long_steps = min(len(test_traj) - 2, 2000)
     long_pred = rollout(model, test_traj[:1], long_steps)[0]
     long_true = test_traj[1 : 1 + long_steps]
-    finite = np.all(np.isfinite(long_pred))
+
+    # A rollout can blow up while staying numerically finite. Rossler produced errors of 17
+    # and 224 in three separate experiments (R4c, R8b, N5) and passed an is-finite check
+    # every time, because 224 is a perfectly good float. Divergence has to be judged against
+    # the system's own scale: anything wandering far outside the range the real trajectory
+    # occupies is not a forecast, whatever its floating-point status.
+    span = np.ptp(long_true, axis=0).max()
+    max_dev = np.abs(long_pred - long_true.mean(0)).max() if np.all(np.isfinite(long_pred)) else np.inf
+    finite = bool(np.all(np.isfinite(long_pred)) and max_dev < DIVERGENCE_FACTOR * span)
 
     # Error at fixed horizons. VPT is censored whenever skill outlives the rollout, which
     # happened on a third of R4's fits, so a fixed-horizon error is the honest measure.
@@ -176,6 +188,7 @@ def evaluate_rollout(
         "vpt_lyap": vpt,
         "vpt_steps": float(vpt / spec_lyap_per_step) if spec_lyap_per_step > 0 else float("nan"),
         "diverged": not finite,
+        "max_deviation_ratio": float(max_dev / span) if span > 0 else float("nan"),
         "spectrum_error": float(spectrum_error(long_true, long_pred)) if finite else float("nan"),
         "density_kl": float(invariant_density_kl(long_true, long_pred)) if finite else float("nan"),
     }
@@ -208,6 +221,16 @@ def demo() -> None:
 
     # rollout must compound: step 20 error >= step 0 error on this contracting system
     assert ev["err_by_step"][-1] >= ev["err_by_step"][0]
+
+    # a deliberately unstable model must be flagged as diverged, not merely non-finite
+    class Exploder(nn.Module):
+        def forward(self, x):
+            return x * 0.7  # multiplies the state by 1.7 every step: finite, but runaway
+
+    ev_bad = evaluate_rollout(Exploder(), traj[2000:].astype(np.float32), 0.01,
+                              steps=50, n_starts=8)
+    assert ev_bad["diverged"], "a runaway-but-finite rollout must be flagged"
+    assert not ev["diverged"], "a good rollout must not be flagged"
 
     # same seed reproduces exactly
     m2, i2 = fit(X[:2000], Y[:2000], budget=2000, epochs=120, seed=0)
