@@ -131,3 +131,43 @@ Nothing that depends on it has been claimed.
 **What ran instead.** The other four planned items, all of which use already-validated code:
 R2 extended to every usable system (the predictor features N3 needs), N3 at full scale, N5 the
 batch-size sweep with seeds, N2 observational noise at three levels.
+
+## 2026-09-08 — next round complete
+
+All planned follow-ups delivered except N1 (Kuramoto-Sivashinsky), which is parked; see the
+entry above for the full list of what was tried.
+
+**N3** (predictor on all 108 bounded systems): the finding holds and strengthens. Spectral
+entropy 0.150 -> 0.250 leave-one-out, best combination 0.321. Corrects R3b's claim that the
+Lyapunov exponent is anti-predictive - at 108 systems it is +0.032, so the -0.146 was our own
+small-sample noise. Copying still ties at 46/108, median ratio exactly 1.00.
+
+**N5** (batch sweep with seeds): batch 256 was a suboptimal choice. Relative rollout error at
+h=50 is 1.07 at batch 64, 1.17 at 128, 1.66 at 256. The earlier single-seed check was
+underpowered and concluded nothing could be said - the same failure this battery keeps finding
+in published work. No conclusion is invalidated because all our claims are relative comparisons
+under one constant recipe, but absolute error levels sit about 1.7x above achievable, which is
+why we never claimed an absolute floor.
+
+**N2** (observational noise): the most consequential result of the round. Surrogate skill
+degrades gracefully (forecast horizon 1.00, 0.74, 0.36, 0.08 at 0/1/5/20% noise) but
+predictability of that skill collapses from +0.294 to -0.036 at one percent and stays negative.
+The setup was generous - predictor statistics came from clean trajectories - so even perfect
+system knowledge does not survive noisy measurement.
+
+And the round's best finding, which nobody planned: at 20% noise the trained network beats
+copying on 29/40 systems against 19/40 clean. Copying reproduces a past segment including its
+noise; a network averages over examples and cannot. So the network's advantage over lookup is
+**denoising**, which is switched off on clean data - and every benchmark in this field is clean
+data. That is a mechanistic explanation for the tie we kept measuring, and it is the most novel
+thing to come out of the whole battery.
+
+**Divergence bug fixed.** 42 of 573 capacity fits had exploded while passing an is-finite check,
+39 of them Rossler. evaluate_rollout now judges against the system's own scale. Re-running R4c
+without the affected fits leaves short horizons identical and lowers long ones (h=500 +0.24 ->
++0.13), so the conclusion is unchanged and slightly strengthened.
+
+**Where this leaves the directions.** The predictor direction is badly damaged by N2 - it is a
+noiseless-simulation result. The horizon story (R4c + R8b) is the strongest surviving spine. The
+denoising explanation is the most novel single finding. Methodology findings are cheap and
+solid. A written proposal has been offered and not yet requested.

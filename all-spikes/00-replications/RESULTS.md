@@ -7,9 +7,13 @@ of it.
 Plan and hypotheses: [PLAN.md](PLAN.md). Raw numbers: `results/`. Figures:
 `results/analysis/`. Run logs: `logs/`.
 
-**Status:** all runs complete. 18 systems in the final capacity analysis, 573 fits.
-R1's final block-size-6 tier was deliberately stopped (see R1 for why it could not have been
-informative).
+**Status:** all runs complete — 12 experiments, ~6,550 logged results across 46 run logs,
+about 20 hours of compute on a 2-core laptop with no GPU.
+
+One planned item was **not** delivered: Kuramoto-Sivashinsky, the spatially extended system
+(N1). Our integrator destabilises past roughly 11k steps and the canonical published parameters
+fail the same way, which says the fault is ours. It is parked with a full record of what was
+tried, in NOTES.md, rather than shipped half-working. Nothing depending on it has been claimed.
 
 ---
 
