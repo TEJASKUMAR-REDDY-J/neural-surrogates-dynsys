@@ -39,6 +39,7 @@ class Dataset:
     ordered: bool          # do neighbouring cells actually mean anything?
     temporal: bool         # is the lattice axis time, so masking the tail = forecasting?
     note: str = ""
+    n_duplicates_removed: int = 0
 
     def __post_init__(self):
         # torch is float32 everywhere; a float64 array silently breaks the backward pass
@@ -55,6 +56,35 @@ def _norm01(a: np.ndarray) -> np.ndarray:
     if hi <= lo:
         lo, hi = float(a.min()), float(a.max()) or 1.0
     return np.clip((a - lo) / (hi - lo + 1e-12), 0.0, 1.0)
+
+
+def dedup(X: np.ndarray) -> np.ndarray:
+    """Drop exactly repeated examples, keeping the first occurrence and the original order.
+
+    This exists because of a real failure. Two datasets were built by repeating a finite
+    pool of rows to reach the requested count - the clinical features are tiled from 569
+    rows to 900, and rule 110 settles into only 337 distinct states out of 900 steps. The
+    train/test split then puts an exact copy of every test row in the training set, and the
+    nearest-neighbour baseline scores exactly 0.000 because it retrieves the answer rather
+    than predicting it.
+
+    Deduplicating before the split is the fix. It makes the datasets smaller and the scores
+    worse, which is the point: the earlier scores were measuring retrieval.
+    """
+    if X.ndim < 2:
+        return X
+    flat = X.reshape(len(X), -1)
+    _, first = np.unique(flat, axis=0, return_index=True)
+    return X[np.sort(first)]
+
+
+def leakage(X: np.ndarray, train_frac: float = 0.75) -> float:
+    """Fraction of test rows with an exact copy in train. Must be 0."""
+    flat = X.reshape(len(X), -1)
+    k = int(len(flat) * train_frac)
+    seen = {r.tobytes() for r in flat[:k]}
+    test = flat[k:]
+    return sum(r.tobytes() in seen for r in test) / max(len(test), 1)
 
 
 def _windows(series: np.ndarray, width: int, n: int, seed: int) -> np.ndarray:
@@ -238,11 +268,26 @@ def build_all(n_per_set: int = 900, seed: int = 0) -> list[Dataset]:
         ordered=True, temporal=True,
         note="sum of three sinusoids - smooth, predictable, an easy control"))
 
+    # Every dataset is deduplicated before it is ever split. See `dedup` for why - one
+    # baseline was scoring a perfect 0.000 by retrieving an identical training row.
+    for d in sets:
+        before = len(d.X)
+        d.X = dedup(d.X)
+        d.n_duplicates_removed = before - len(d.X)
+
     return sets
 
 
 def demo() -> None:
     """Self-check: shapes are consistent, values are in range, and the CML is chaotic."""
+    # No test example may have an exact copy in training. This is asserted rather than
+    # trusted: two datasets used to fail it outright (clinical features tiled from 569 rows
+    # to 900, rule 110 settling into 337 distinct states), and the nearest-neighbour
+    # baseline scored a perfect 0.000 by retrieving instead of predicting.
+    for _d in build_all(900):
+        _lk = leakage(_d.X)
+        assert _lk == 0.0, f"{_d.name}: {_lk:.0%} of test rows have an exact copy in train"
+
     lam = cml_lyapunov_spectrum(16, n_steps=600)
     assert lam[0] > 0.1, f"CML should be chaotic, largest exponent was {lam[0]:.3f}"
     assert lam[0] > lam[-1], "spectrum must be sorted descending"

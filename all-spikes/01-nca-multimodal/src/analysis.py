@@ -33,7 +33,8 @@ plt.rcParams.update({
     "figure.dpi": 130, "font.size": 8.5, "axes.grid": True, "grid.alpha": 0.25,
     "axes.spines.top": False, "axes.spines.right": False,
 })
-ARCH_C = {"A1_local": "#c0392b", "A2_pooled": "#2980b9", "A3_attentive": "#27ae60"}
+ARCH_C = {"A1_local": "#c0392b", "A2_pooled": "#2980b9", "A3_attentive": "#27ae60",
+          "A4_interleaved": "#8e44ad"}
 BASE_C = "#7f8c8d"
 STD = dict(cond_mode="random", cond_frac=0.3, cond_noise=0.0)     # the training condition
 
@@ -281,6 +282,96 @@ def fig_optimizers():
     return g
 
 
+def fig_metrics(df):
+    """Do the metrics agree? If they rank methods differently, saying "the error" is wrong.
+
+    Six ways of measuring the same predictions. MSE punishes a few large misses, MAE does
+    not; nRMSE divides by the data's own spread so datasets are comparable; relative L2 is
+    the norm ratio the neural-operator papers report. They are not interchangeable, and the
+    only way to know whether that matters here is to rank the methods by each and compare.
+    """
+    cols = [c for c in ("mse_hidden", "mae_hidden", "nrmse_hidden", "rel_l2_hidden",
+                        "mse_all", "rel_l2_all") if c in df.columns]
+    if len(cols) < 2:
+        return None
+    d = sel(df, cond_mode="random", cond_frac=0.3, cond_noise=0.0)
+    d = d[(d.kind == "baseline") | (d.steps == d.best_steps)]
+    if d.empty:
+        return None
+
+    piv = d.pivot_table(index="method", columns=[], values=cols, aggfunc="median")
+    ranks = piv.rank()
+
+    fig, ax = plt.subplots(1, 2, figsize=(11.0, 3.8))
+    methods = list(piv.index)
+    x = np.arange(len(methods))
+    w = 0.8 / len(cols)
+    for i, c in enumerate(cols):
+        v = piv[c] / piv[c].max()                      # each metric on its own 0-1 scale
+        ax[0].bar(x + i * w, v, w, label=c)
+    ax[0].set_xticks(x + 0.4)
+    ax[0].set_xticklabels(methods, rotation=35, ha="right", fontsize=7)
+    ax[0].set_ylabel("value, scaled to its own worst case")
+    ax[0].set_title("Six metrics, same predictions", fontsize=9)
+    ax[0].legend(fontsize=6.5, frameon=False, ncol=2)
+
+    im = ax[1].imshow(ranks.T.values, cmap="RdYlGn_r", aspect="auto")
+    ax[1].set_xticks(x); ax[1].set_xticklabels(methods, rotation=35, ha="right", fontsize=7)
+    ax[1].set_yticks(range(len(cols))); ax[1].set_yticklabels(cols, fontsize=7)
+    for i in range(len(methods)):
+        for j in range(len(cols)):
+            ax[1].text(i, j, int(ranks.T.values[j, i]), ha="center", va="center", fontsize=6.5)
+    ax[1].grid(False)
+    spread = int((ranks.max(axis=1) - ranks.min(axis=1)).max())
+    ax[1].set_title(f"Rank by each metric (1 = best)\nworst disagreement: "
+                    f"{spread} places", fontsize=9)
+    fig.tight_layout(); fig.savefig(FIG / "07_metric_agreement.png", bbox_inches="tight")
+    plt.close(fig)
+    return ranks
+
+
+def fig_horizon(df):
+    """Error against rollout horizon, and how long each automaton stays usable.
+
+    An automaton that is excellent at step 4 and garbage at step 32 has not learned a rule,
+    it has learned a schedule. R9 in 00-replications found exactly that failure in 24 of 24
+    cases, so this is the figure that says whether the fix - randomising the iteration count
+    during training - actually worked.
+    """
+    d = sel(df, kind="learned", cond_mode="random", cond_frac=0.3, cond_noise=0.0)
+    if d.empty:
+        return
+    fig, ax = plt.subplots(1, 2, figsize=(10.4, 3.6))
+
+    for arch, sub_ in d.groupby("arch"):
+        g = sub_.groupby("steps").nrmse_hidden.median()
+        ax[0].plot(g.index, g.values, "o-", ms=3.5, color=ARCH_C.get(arch), label=arch)
+    ax[0].axhline(1.0, color="#c0392b", ls=":", lw=1)
+    ax[0].text(1.05, 1.02, "no better than guessing the mean", fontsize=6.5, color="#c0392b")
+    ax[0].set_xscale("log", base=2)
+    ax[0].set_xlabel("iterations (trained with 4-10)")
+    ax[0].set_ylabel("nRMSE on hidden cells")
+    ax[0].set_title("Error against rollout horizon", fontsize=9)
+    ax[0].legend(fontsize=7, frameon=False)
+    ax[0].axvspan(4, 10, color="#888", alpha=0.10)
+
+    if "vpt_steps" in d.columns:
+        piv = d.pivot_table(index="dataset", columns="arch", values="vpt_steps",
+                            aggfunc="median")
+        archs = [a for a in ARCH_C if a in piv]
+        x = np.arange(len(piv.index))
+        w = 0.8 / max(len(archs), 1)
+        for i, a in enumerate(archs):
+            ax[1].bar(x + i * w, piv[a], w, color=ARCH_C[a], label=a)
+        ax[1].set_xticks(x + 0.4)
+        ax[1].set_xticklabels(piv.index, rotation=35, ha="right", fontsize=6.5)
+        ax[1].set_ylabel("valid prediction time (iterations)")
+        ax[1].set_title("How long it stays usable\n(nRMSE under 0.4, the 00-replications "
+                        "threshold)", fontsize=9)
+    fig.tight_layout(); fig.savefig(FIG / "08_horizon_and_vpt.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> None:
     FIG.mkdir(parents=True, exist_ok=True)
     raw = pd.concat([pd.read_csv(f) for f in sorted(glob.glob(str(RES / "smoke__*.csv")))],
@@ -294,6 +385,8 @@ def main() -> None:
     fig_stability(raw)
     corr = fig_correlations(df)
     fig_cost(df)
+    fig_metrics(df)
+    fig_horizon(df)
     opt = fig_optimizers()
 
     std = sel(df, **STD)

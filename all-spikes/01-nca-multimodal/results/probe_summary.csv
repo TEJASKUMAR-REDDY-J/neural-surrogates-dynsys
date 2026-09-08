@@ -1,0 +1,5 @@
+arch,n_params,reach_step1,steps_to_cover,global_share,knockout_ratio,memory_ratio
+A1_local,13215.0,0.0469,2.5,0.0,1.0,1.0041
+A2_pooled,13046.0,1.0,1.0,0.3944,1.0552,1.0299
+A3_attentive,13163.0,1.0,1.0,1.2179,1.4219,1.0556
+A4_interleaved,12795.0,1.0,1.0,0.3161,1.0952,1.1393
