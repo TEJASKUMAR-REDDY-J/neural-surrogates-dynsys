@@ -327,6 +327,92 @@ original question now that the mirage is gone.
 
 ---
 
+## R3b — asking again, honestly
+
+**In one sentence:** the 59% was entirely an artefact and collapses to **0.01%**; about **27%**
+of surrogate skill *is* genuinely predictable from two cheap statistics, and neither of them is
+the Lyapunov exponent or the one that looked so good before.
+
+30 clean systems, no clocks. Same fixed network, 5 seeds each.
+
+### First: the mirage is confirmed dead
+
+| predictor | R², first pass (24 systems, 7 with clocks) | R², now (30 clean systems) |
+|---|---|---|
+| weighted permutation entropy | **0.593** | **0.0001** |
+| largest Lyapunov exponent | 0.0015 | 0.032 |
+
+WPE now explains **one hundredth of one percent**. Whatever it was picking up before, it was
+not learnability.
+
+### Second: something does predict — but only if you check properly
+
+The full six-feature fit gives an in-sample R² of **0.465**, which looks respectable. We nearly
+reported that. Two checks stopped us.
+
+**Check 1 — a shuffle control.** Permute the features at random 2,000 times and refit. Median
+R² from pure noise: **0.192**. 95th percentile: **0.374**. So 0.465 does beat chance — six
+features on thirty points buy a lot of R² for free, but not quite that much.
+
+**Check 2 — leave-one-out.** Drop each system in turn, fit on the other 29, predict the one
+held out. This asks the only question that matters: *would this predict a system it has never
+seen?* Answer: **R² = −12.8**, far worse than simply guessing the average.
+
+The culprit was one system. The Lyapunov exponent across these 30 ranges from 0.007 to **132**,
+so dropping certain points forces the fit to extrapolate wildly. That is leverage, not just
+overfitting. Replacing each feature by its rank fixes it without assuming any functional form.
+
+### The honest table
+
+Rank-transformed features. The last column is the one that counts.
+
+| predictor | in-sample R² | **leave-one-out R²** |
+|---|---|---|
+| weighted permutation entropy | 0.000 | **−0.146** |
+| largest Lyapunov exponent | 0.000 | **−0.146** |
+| Kaplan–Yorke dimension | 0.067 | −0.063 |
+| our correlation dimension | 0.105 | −0.029 |
+| 0-1 chaos test | 0.206 | 0.099 |
+| **spectral entropy** | 0.251 | **0.150** |
+| all six together | 0.452 | 0.061 |
+| **spectral entropy + correlation dimension** | 0.403 | **0.266** |
+
+Negative means "worse than predicting the same average for every system."
+
+**About 27% of the variation in surrogate skill across 30 systems is genuinely predictable,
+from two cheap statistics: spectral entropy and correlation dimension.**
+
+Three things follow.
+
+1. **The Lyapunov exponent is not weakly predictive — it is anti-predictive.** −0.146. Using it
+   is worse than not using it. That sharpens Gilpin's "decorrelates" into something stronger.
+2. **The predictors that work are not the ones anyone would have picked.** Not chaoticity, not
+   ordinal disorder — but how concentrated the frequency spectrum is, plus attractor geometry.
+3. **The kill criterion does not fire.** 27% is far short of 85%, so roughly **three quarters of
+   the variation is still unexplained.** There is real room for something better. A green light
+   for the learned-predictor idea — far more modest than the 59% would have suggested, and
+   honest.
+
+### And the humbling number
+
+**A trained neural network is, on median, exactly as good as copying.**
+
+| | |
+|---|---|
+| systems where the trained model beats copying | **12 of 30** |
+| median skill ratio, model ÷ copying | **1.00** |
+| copying wins by more than 2× | 7 systems |
+| model wins by more than 2× | 5 systems |
+
+A coin flip. On these 30 low-dimensional systems, all that training buys on average is parity
+with "find the most similar past moment and copy what happened next."
+
+That does not mean the models are broken — on some systems they win handsomely. It means
+**copying has to be reported alongside every surrogate result**, because without it a reader
+cannot tell learning from lookup.
+
+---
+
 ## R8 — 63 small steps, or one big jump?
 
 **In one sentence:** small steps won on 5 of 6 systems — but our test was too short to be
