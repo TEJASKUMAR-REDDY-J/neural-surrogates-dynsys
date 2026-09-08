@@ -29,6 +29,7 @@ informative).
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
 | **R9** | If the first answer is wrong, can more passes fix it? | **For about 3 passes, then it gets worse.** Pass 2 beats pass 1 in 21/24 cases, the best pass is always within the 4 it was trained for (24/24), and it *never* kept improving to pass 16 (0/24). On 7/24 cases pass 16 is >10% worse than the best - one case 291% worse. Still loses to plain stepping by 20x at short horizons. |
 | **N3** | The predictor question on the whole library (108 systems). | **Holds and strengthens.** ~**32%** predictable (up from 27%), spectral entropy best single predictor at 0.250. Copying still ties: **46/108**, median ratio **1.00**. Corrects R3b - λ is not anti-predictive, just uninformative (+0.03). |
+| **N5** | Was batch size 256 a good choice? | **No.** With seeds, 64-128 are clearly better; 256 costs ~**66% higher** rollout error. Conclusions unaffected (all relative comparisons), but absolute error levels sit ~1.7x above achievable. |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
@@ -983,6 +984,72 @@ size. That is now a well-supported green light rather than a hopeful one.
 Exactly the same picture, four times the evidence. **A trained neural surrogate is, on median,
 precisely as good as finding the most similar moment in the past and copying what happened
 next.** This is now one of the best-supported results in the battery.
+
+---
+
+## N5 — was batch size 256 actually a good choice?
+
+**In one sentence:** no. With seeds, batches of 64–128 are clearly better, and 256 costs us
+about **66% higher rollout error** than the best setting. It does not change any conclusion,
+and it does bound what we can say about absolute error levels.
+
+### Why we ran it
+
+256 was picked by convention. A single-seed check afterwards hinted 128 might be better, but
+the gap sat inside seed noise, so it could not be called. This runs 3 systems × 5 batch sizes ×
+3 seeds, with the learning rate scaled to batch size as usual, so it compares recipes rather
+than penalising large batches for an unadjusted step.
+
+### The result
+
+Each system's error is divided by its own best, so all three weigh equally:
+
+| batch | training loss | relative error at h=1 | relative error at h=50 | time |
+|---|---|---|---|---|
+| **64** | 2.67e-05 | **1.00** | **1.07** | 43 s |
+| **128** | 3.08e-05 | 1.16 | **1.17** | 24 s |
+| 256 *(what we used)* | 4.67e-05 | 1.73 | 1.66 | 16 s |
+| 512 | 8.76e-05 | 2.66 | 2.00 | 11 s |
+| 1024 | 1.33e-04 | 3.42 | 2.79 | 8 s |
+
+```
+relative rollout error at h=50 (lower is better)
+  64  ██████████                      1.07
+ 128  ███████████                     1.17
+ 256  ████████████████                1.66   <- what we used
+ 512  ███████████████████             2.00
+1024  ██████████████████████████      2.79
+```
+
+Seed spread was 22–36%, and the 64-versus-256 gap is larger than that, so this is a real
+difference and not noise. **The earlier single-seed check was simply underpowered** — exactly
+the failure this battery keeps finding in other people's work, committed by us.
+
+**Verdict: 128 is the sweet spot.** It gives nearly the best error at 1.5× the cost of 256.
+Batch 64 buys a further 9% for 2.7× the cost.
+
+### Does this invalidate anything?
+
+**No, for a reason worth stating precisely.** Every claim we made is a *relative* comparison —
+bigger model versus smaller, this horizon versus that, model versus copying — all under one
+recipe held constant everywhere. A uniformly suboptimal recipe shifts every condition together
+and does not reorder them.
+
+**But it does bound one thing.** Our models sit roughly 1.7× above the error they could have
+reached. So any statement about *absolute* error levels — how close a system gets to its floor —
+inherits that gap. We deliberately never claimed an absolute floor for any system, and this is
+the reason that restraint was correct.
+
+If we do claim an absolute number later, it needs re-running at batch 128.
+
+### One more thing this exposed
+
+Look at Rossler: error 2.87 ± 2.43 at h=50, and **17.6 at h=200**. Those are exploded rollouts,
+and the huge spread means it happens on some seeds and not others. This is the same divergence
+issue R4c turned up, where our check tested whether values were *finite* but not whether they
+were *bounded*. It is now visible in three separate experiments, so it should be fixed properly:
+flag a rollout as diverged when it exceeds a sane multiple of the system's own range, not merely
+when it becomes infinite.
 
 ---
 
