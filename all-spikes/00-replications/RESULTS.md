@@ -403,6 +403,96 @@ Two flaws in our own design, both ours:
 
 ---
 
+## R8b — the same question with a long enough ruler, and a fair fight
+
+**In one sentence:** small steps still win, one big jump **fails earlier not later**, so the
+long-horizon wall is a real information limit rather than an errors-piling-up problem — and on
+the two calmest systems, plain copying beat both trained networks.
+
+360 runs, horizons out to 512 steps (up to 16 Lyapunov times on Thomas), with the big-jump
+model trained at both 1× and 4× the examples.
+
+### The discriminating question, and its answer
+
+This was the sharp reason to rerun. Shikhman found every architecture fails at long rollout
+and offered a bound, not an explanation. Two candidates:
+
+- the failure is **errors piling up** — a flaw in the *procedure* of feeding output back in;
+- the failure is an **information limit** — the answer simply is not there to be had.
+
+A one-big-jump model never feeds its output back in, so it cannot pile up errors. If it sails
+past the point where small steps fail, the cause was accumulation. If it fails in the same
+place, the cause is the information.
+
+**It fails earlier.** Lorenz, where 1.0 means "no better than guessing the average":
+
+| horizon | 1 | 8 | 32 | 64 | 128 | 256 | 512 |
+|---|---|---|---|---|---|---|---|
+| Lyapunov times | 0.0 | 0.1 | 0.4 | 0.9 | 1.7 | 3.4 | 6.9 |
+| small steps | 0.000 | 0.003 | 0.020 | 0.131 | 0.224 | 0.620 | 1.331 |
+| one big jump (1×) | 0.045 | 0.078 | 0.255 | 0.592 | 0.986 | 0.999 | 1.042 |
+| one big jump (4×) | 0.039 | 0.067 | 0.165 | 0.456 | 0.909 | 0.999 | 1.019 |
+
+Small steps stay usable to roughly 256 steps. The big jump is already useless by 128.
+Removing error accumulation **does not** buy a longer horizon. **The wall is informational.**
+
+That agrees with R4b, where extra capacity bought nothing at long horizons, and it lands on
+Duraisamy's side of the dispute for the long-horizon regime.
+
+### The thing that looks like a win for the big jump is not one
+
+At the very longest horizons the big jump often shows the *lower* number — Lorenz at h=512,
+1.019 against 1.331. But 1.0 means "no better than guessing the average." The big jump is not
+predicting better; it is **failing more gracefully**, settling onto the average, while small
+steps overshoot into being worse than useless. Neither is forecasting anything by then.
+
+So across all six systems we looked for a horizon where the big jump was both **better than
+small steps** and **still accurate** (error under 0.5). It exists on exactly **one** system:
+Chua at 64–128 steps (1–2 Lyapunov times), scoring 0.142 against 0.247. Everywhere else,
+small steps win throughout the usable range.
+
+### The fairness fix mattered, but did not change the verdict
+
+Four times the training examples helped the big jump consistently — Lorenz at h=64 improved
+0.592 → 0.456 (23% better), Chua 0.192 → 0.142 (26%). So the first pass really was
+handicapping it. But that was not why it lost. Good: the confound is now measured rather than
+assumed away.
+
+### And now the uncomfortable one
+
+**On the two calmest systems, parameter-free copying beat both trained networks at every long
+horizon.** Rossler (λ = 0.15):
+
+| horizon | 16 | 64 | 128 | 256 | 512 |
+|---|---|---|---|---|---|
+| small steps | 0.015 | 0.071 | 0.119 | 0.322 | 0.650 |
+| one big jump (4×) | 0.035 | 0.077 | 0.186 | 0.639 | 0.881 |
+| **copying** | **0.015** | **0.022** | **0.034** | **0.061** | **0.258** |
+
+At 256 steps copying is **5× better than small steps** and **10× better than the big jump**.
+Same story on Aizawa (λ = 0.14), where copying wins at h=512.
+
+Both systems are weakly chaotic and close to periodic, so their trajectories revisit similar
+states often, and "find the most similar past moment and copy what happened next" is an
+excellent strategy. It needs no training and no parameters.
+
+This is the context-parroting warning reproduced in our own setting. Any future claim of the
+form "our surrogate learned the dynamics well enough to forecast N steps ahead" has to be
+checked against copying first — otherwise the claim may be about how repetitive the attractor
+is, not about what the model learned.
+
+### The answer to the original question
+
+You asked: if a model has genuinely learned the rule, why should it step through
+`t → t+1 → … → t+63` instead of jumping straight to `t+63`?
+
+**On these systems it should step.** Stepping wins at every horizon where the forecast is
+still worth having, on five of six systems. And the reason to hope otherwise — that jumping
+avoids accumulated error — does not pay off: jumping fails *sooner*, because what runs out at
+long horizons is information, not arithmetic precision.
+
+---
+
 ## R4 — Does a model stop improving no matter how big you make it?
 
 **In one sentence:** the experiment ran perfectly and **could not answer its own question**,
