@@ -26,6 +26,7 @@ been informative).
 | **R4b** | The crux, properly configured. | Capacity helps hugely at short horizons, **not at all** at long ones. Where it stops varies **450×** between systems, and λ does not explain it. **This may reconcile the three papers that disagree.** |
 | **R8** | 63 small steps, or one big jump? | **Small steps win** on 5 of 6 systems. |
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
+| **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
 | **R4c** | Does λ explain the 450× spread, on more systems? | *Running* — 14 systems spanning a 200× range in λ. |
@@ -790,6 +791,76 @@ Lyapunov exponent (0.011 to 2.325), which makes the "does λ explain it?" test p
 powered. The dimension test will stay underpowered, because the catalogue simply does not
 contain many low-dimensional attractors above dimension 2.5 — and that limitation is worth
 reporting rather than hiding.
+
+## R6 — Does a bigger model get the *shape* right, or just the next step?
+
+**In one sentence:** making the model bigger buys a lot of short-term accuracy and **almost
+nothing** structural — so "our model is 10× more accurate" and "our model understands the
+system better" are different claims.
+
+This one costs nothing. It reuses R4b's 378 already-trained models and just asks a different
+question of them.
+
+### The two ways to be right
+
+Think about forecasting a spinning top.
+
+- **Pointwise:** where exactly is the tip, right now? This is what almost every paper reports.
+- **Structural:** is it still spinning at the right rate, tracing the right shape, leaning at
+  the right angle? You can get this right while having no idea where the tip is at this
+  instant.
+
+For a chaotic system the pointwise question becomes hopeless quickly. The structural one need
+not.
+
+### What we did
+
+For every trained model from R4b, measure how much *making the model bigger* improves each
+kind of accuracy. A score near +1 means capacity helps a lot; near 0 means it does not help
+at all.
+
+| system | dimension | one-step | at h=50 | at h=1000 | spectrum | attractor shape |
+|---|---|---|---|---|---|---|
+| Rossler | 2.01 | 0.88 | 0.77 | 0.51 | 0.37 | 0.50 |
+| Lorenz | 2.08 | 0.80 | 0.70 | −0.15 | −0.03 | 0.02 |
+| Thomas | 2.13 | 0.97 | −0.15 | 0.10 | 0.63 | 0.75 |
+| HyperCai | 3.14 | 0.94 | 0.74 | −0.11 | 0.04 | 0.04 |
+| HenonHeiles | 6.81 | 0.64 | 0.64 | 0.02 | 0.16 | −0.22 |
+| Bouali2 | 16.47 | −0.07 | 0.46 | 0.27 | 0.02 | 0.27 |
+| **median** | | **+0.84** | **+0.67** | **+0.06** | **+0.10** | **+0.16** |
+
+### What it means
+
+Read the median row left to right. It falls off a cliff.
+
+```
+one-step accuracy   ████████████████████  +0.84   capacity helps enormously
+error at h=50       ████████████████      +0.67   still helps
+error at h=1000     █                     +0.06   helps not at all
+spectrum            ██                    +0.10   helps not at all
+attractor shape     ███                   +0.16   barely
+```
+
+**A hundredfold increase in model size makes the next-step prediction far better and leaves
+the long-run behaviour essentially untouched.** Whatever capacity is buying, it is not a
+better grasp of the system's structure.
+
+This is the pattern five separate papers noticed in passing — Gilpin's models ranking
+differently by fractal dimension than by pointwise error, foundation models keeping the
+attractor after their point forecasts fail, REALM's models scoring correlation above 0.8
+while getting the detonation cell size wrong. Here it is measured directly, on models we had
+to train anyway.
+
+**The practical consequence for anyone reading a surrogate paper:** an improvement in reported
+error is, by default, an improvement in *short-horizon pointwise* error, and carries no
+implication about whether the model captured the dynamics. Those need to be reported
+separately. We now do.
+
+**Caveat.** Six systems, and each score comes from 21 models (7 capacities × 3 seeds). The
+per-system numbers are noisy — Thomas is inconsistent with the others at h=50 — so we lean on
+the median across systems, not on any single row.
+
+---
 
 ## R5 — Does more chaos really need a *smaller* model?
 
