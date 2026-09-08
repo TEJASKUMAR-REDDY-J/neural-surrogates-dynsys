@@ -89,6 +89,50 @@ def mlp_for_budget(
     return MLP(in_dim, out_dim, w, depth)
 
 
+class RefineMLP(nn.Module):
+    """A corrector applied over and over to its own output.
+
+    Given where the system is now, a horizon, and a current guess at where it will be, this
+    proposes a correction to the guess. Run it once and it is an ordinary direct predictor;
+    run it k times, each pass refining the last, and it becomes iterative computation at
+    inference time - the mechanism recursive-reasoning models like TRM are built on.
+
+    The interesting question is not whether pass 2 beats pass 1. It is whether the sequence
+    keeps improving, settles, or turns around and gets worse - and whether it stays sane
+    beyond the number of passes it was trained for.
+    """
+
+    def __init__(self, dim: int, width: int, depth: int = 2, h_max: int = 256):
+        super().__init__()
+        self.h_max = h_max
+        self.dim = dim
+        # inputs: current state, current guess, guess-minus-state, and two horizon features
+        self.body = MLP(3 * dim + 2, dim, width, depth)
+
+    def _feat(self, x, guess, h):
+        h = h.reshape(-1, 1).float()
+        hf = torch.cat([torch.log(h) / math.log(self.h_max), h / self.h_max], dim=1)
+        return torch.cat([x, guess, guess - x, hf], dim=1)
+
+    def step(self, x, guess, h):
+        return guess + self.body(self._feat(x, guess, h))
+
+    def forward(self, x, h, passes: int = 1, return_all: bool = False):
+        guess = x
+        outs = []
+        for _ in range(passes):
+            guess = self.step(x, guess, h)
+            outs.append(guess)
+        return outs if return_all else guess
+
+
+def refine_for_budget(dim: int, budget: int, depth: int = 2, seed: int = 0,
+                      h_max: int = 256) -> RefineMLP:
+    torch.manual_seed(seed)
+    w = width_for_budget(3 * dim + 2, dim, budget, depth)
+    return RefineMLP(dim, w, depth, h_max=h_max)
+
+
 def demo() -> None:
     # closed-form parameter count must match the real model
     for depth in (1, 2, 3):
@@ -117,6 +161,15 @@ def demo() -> None:
     o1 = hm(x, torch.ones(8))
     o2 = hm(x, torch.full((8,), 32.0))
     assert o1.shape == (8, 3) and not torch.allclose(o1, o2)
+
+    # refinement model: repeated passes must actually change the guess
+    rm = refine_for_budget(3, 8000, seed=0)
+    xx, hh = torch.randn(6, 3), torch.full((6,), 32.0)
+    o1 = rm(xx, hh, passes=1)
+    o3 = rm(xx, hh, passes=3)
+    allo = rm(xx, hh, passes=3, return_all=True)
+    assert o1.shape == (6, 3) and len(allo) == 3
+    assert torch.allclose(allo[-1], o3) and not torch.allclose(o1, o3)
 
     print(
         "models ok - "
