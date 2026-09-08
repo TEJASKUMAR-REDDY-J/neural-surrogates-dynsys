@@ -30,6 +30,7 @@ informative).
 | **R9** | If the first answer is wrong, can more passes fix it? | **For about 3 passes, then it gets worse.** Pass 2 beats pass 1 in 21/24 cases, the best pass is always within the 4 it was trained for (24/24), and it *never* kept improving to pass 16 (0/24). On 7/24 cases pass 16 is >10% worse than the best - one case 291% worse. Still loses to plain stepping by 20x at short horizons. |
 | **N3** | The predictor question on the whole library (108 systems). | **Holds and strengthens.** ~**32%** predictable (up from 27%), spectral entropy best single predictor at 0.250. Copying still ties: **46/108**, median ratio **1.00**. Corrects R3b - λ is not anti-predictive, just uninformative (+0.03). |
 | **N5** | Was batch size 256 a good choice? | **No.** With seeds, 64-128 are clearly better; 256 costs ~**66% higher** rollout error. Conclusions unaffected (all relative comparisons), but absolute error levels sit ~1.7x above achievable. |
+| **N2** | Does any of this survive imperfect measurement? | **The surrogates do; the predictor does not.** Forecast horizon falls gracefully (1.00 -> 0.74 -> 0.36 at 0/1/5% noise), but predictability of skill collapses from **+0.29 to -0.04 at 1% noise**. The N3 result is a property of noiseless synthetic data. |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
@@ -1068,6 +1069,85 @@ issue R4c turned up, where our check tested whether values were *finite* but not
 were *bounded*. It is now visible in three separate experiments, so it should be fixed properly:
 flag a rollout as diverged when it exceeds a sane multiple of the system's own range, not merely
 when it becomes infinite.
+
+---
+
+## N2 — does any of this survive imperfect measurement?
+
+**In one sentence:** the surrogates degrade gracefully, but **the ability to predict how well
+they will do is destroyed by 1% measurement noise** — and that is the most serious limit we
+have found on the whole predictor direction.
+
+### Why this had to be run
+
+Everything else in this battery assumes perfect measurement. We generate trajectories from
+exact equations at one part in a billion. No real application has that. So: add measurement
+noise as a fraction of each coordinate's spread, and see what survives.
+
+### The surrogates themselves cope fine
+
+Same 40 systems at every level, so nothing here is a sample-size effect:
+
+| noise | median forecast horizon | relative to clean |
+|---|---|---|
+| none | 123.8 steps | 1.00 |
+| 1% | 91.3 steps | 0.74 |
+| 5% | 44.8 steps | 0.36 |
+
+Reasonable and unsurprising: noise costs you forecast horizon, roughly a quarter of it at 1%
+and two thirds at 5%. The task is harder, not broken.
+
+### The predictor is not fine. It is gone.
+
+| noise | spectral entropy alone | **best pair of statistics** |
+|---|---|---|
+| none | 0.074 | **+0.294** |
+| **1%** | −0.062 | **−0.036** |
+| 5% | −0.068 | −0.050 |
+
+```
+predictability of surrogate skill (leave-one-out R2)
+clean  ████████████  +0.29
+   1%                -0.04     gone
+   5%                -0.05     gone
+```
+
+**One percent noise takes the predictor from explaining 29% of the variation to explaining
+nothing.** Negative means worse than guessing the same value for every system.
+
+This is not a gentle degradation. It is a cliff between "clean" and "barely noisy".
+
+### And it is worse than it looks
+
+The statistics being used as predictors were computed on the **clean** trajectories, from R2.
+Only the surrogate's training data was noisy. So this is the *generous* setting — we gave the
+predictor perfect knowledge of the underlying system and only made the model's job harder.
+
+**Even with perfect system knowledge, surrogate skill under noise is unpredictable.** Had we
+computed the statistics from the noisy data too, as you would have to in practice, it could only
+be worse.
+
+### What this means for the direction
+
+The 32% predictability from N3 is real, and it is a property of **noiseless synthetic data**.
+It does not obviously survive contact with measurement.
+
+That does not kill the direction, but it sharply changes what the honest version of it is:
+
+- *"We can predict which systems a surrogate will handle well"* — supported only in the
+  noiseless setting, which is not where anyone deploys.
+- *"Predicting surrogate skill is easy in simulation and collapses under 1% noise, and here is
+  the evidence"* — supported, and arguably the more useful thing to report, because it tells
+  people where **not** to spend effort.
+
+It also connects back to something in the literature we read at the start: above the noise
+level, chaos and randomness become observationally indistinguishable. We have now measured a
+consequence of that in a concrete setting, and the threshold is much lower than anyone would
+guess — **1% is already enough.**
+
+**Caveat.** 40 systems, three seeds, one noise model (independent Gaussian on every coordinate).
+Real measurement noise is often correlated in time, or affects some coordinates and not others.
+Whether the cliff is this sharp under a realistic noise model is not established here.
 
 ---
 
