@@ -784,9 +784,10 @@ answer by a full model size — which is the fragility we are testing for.
 
 ## R1 — Is "this system has a simple summary" a real property?
 
-**In one sentence:** yes at a fixed zoom level — searching 100× harder found nothing new —
-but the answer changes enormously with the zoom level, so "is it reducible?" is the wrong
-question and "at what scale?" is the right one.
+**In one sentence:** yes where we could check exhaustively, and the answer changes enormously
+with the zoom level — so "is it reducible?" is the wrong question and "at what scale?" is the
+right one. Past block size 4 the search space defeats brute force entirely, which is the real
+reason the published work needed a cleverer algorithm rather than a bigger computer.
 
 ### The setup, in plain terms
 
@@ -836,23 +837,43 @@ summaries at block size 4, and the original authors also allowed summaries with 
 or three categories. Ours is a lower bound. The confirmatory rerun makes block size 4
 exhaustive.)
 
-### And searching harder did *not* matter
+### Does searching harder matter? Only where we could search at all
 
-This was the real test of our worry. At block size 5, we took the 54 rules that had survived
-so far and searched with three budgets in turn:
+This was the real test of our worry, and the answer comes in two halves.
 
-| summaries tried | newly reducible |
-|---|---|
-| 40,000 | **0** |
-| 400,000 | **0** |
-| 4,000,000 | **0** |
+**Where the search is exhaustive, the answer is exact and robust.** At block size 4 there are
+65,534 possible summaries and we checked every one: **202 of 256 rules reducible.** We had
+earlier sampled 59,998 of them (91%) and got **exactly the same 202**. So inside the
+exhaustive regime the count is not a matter of patience at all.
 
-**A hundredfold increase in search effort found nothing.** If valid summaries were lying
-around waiting to be stumbled upon, more searching would have found some. It didn't. So at a
-fixed zoom level, "reducible" looks like a genuine property, not an artefact of patience.
+**Beyond block size 4, we were not really searching.** The number of possible summaries grows
+as 2 to the power of 2 to the power of N, which is brutal:
 
-Our pre-registered kill criterion for this direction was "if the count moves by more than a
-few percent when the search widens." It moved by **zero**. The criterion did not fire.
+| block size | summaries we tried | summaries that exist | coverage |
+|---|---|---|---|
+| 3 | 254 | 256 | 99.2% |
+| 4 | 65,534 | 65,534 | **100%** |
+| 5 | 4,000,000 | 4.3 billion | **0.09%** |
+| 6 | 200,000 | 18 quintillion | **0.000000000001%** |
+
+At block sizes 5 and 6 we found **zero** newly reducible rules — including after raising the
+budget a hundredfold at block size 5. It is tempting to read that as "these rules really are
+irreducible." **It is not evidence of that.** At one part in 10¹⁴ coverage, finding nothing is
+what you would expect whether or not anything is there.
+
+So our earlier reading of this was too strong, and we are correcting it: the search-effort
+conclusion holds **only** for block sizes up to 4, where we could be exhaustive.
+
+**And that is the actual lesson.** The published work reaches 252 of 256 by block size 7. We
+reach 202 and then stall. The difference is not compute — we threw 4 million random summaries
+at block size 5 and got nowhere. The difference is that Dzwinel & Magiera built a *smarter*
+search (refining partitions rather than guessing them). Random search does not scale past
+block size 4, and no amount of hardware fixes that.
+
+Our pre-registered kill criterion was "if the count moves by more than a few percent when the
+search widens." Within the exhaustive regime it moved by **zero** (202 either way). Outside
+it, the criterion cannot be evaluated at all — which is itself worth knowing before designing
+an experiment that depends on the label.
 
 ### A surprise about "wider" searches
 

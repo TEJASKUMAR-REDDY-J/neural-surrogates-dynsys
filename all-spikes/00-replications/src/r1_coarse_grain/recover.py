@@ -27,12 +27,24 @@ def main() -> None:
             r = json.loads(line)
             if r.get("record") == "result" and "block_size" in r:
                 rows.append({k: v for k, v in r.items() if k != "record"})
-        if rows:
+        # Ignore smoke tests: a real sweep covers all 256 rules or a full survivor set, and
+        # a handful of rows from a debugging run would otherwise pollute the merge.
+        if len(rows) >= 50:
             runs[f] = rows
     if not runs:
         raise SystemExit("no R1 result rows found in logs/")
 
-    path, rows = max(runs.items(), key=lambda kv: len(kv[1]))
+    # Merge every run rather than taking the biggest: the first sweep covered k=3 while the
+    # second reached an exhaustive block size 4 and block size 6, and both are wanted.
+    # Deduplicate on the settings that identify a measurement.
+    merged, seen = [], set()
+    for f in sorted(runs, key=lambda f: -len(runs[f])):
+        for r in runs[f]:
+            key = (r["block_size"], r["k"], r["rule"], r["n_projections_tried"])
+            if key not in seen:
+                seen.add(key)
+                merged.append(r)
+    path, rows = f"{len(runs)} runs merged", merged
     keys = sorted({k for r in rows for k in r})
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="", encoding="utf-8") as fh:
