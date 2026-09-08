@@ -898,6 +898,24 @@ geometry." It is: **capacity helps whenever the forecast is still meaningful, an
 helping once the forecast has decayed to useless.** That needs no per-system mechanism, and it
 is what the data supports.
 
+### Re-checked after the divergence bug was fixed
+
+The bug below meant 42 of 573 fits had blown up while still counting as valid. Redoing the main
+table without them:
+
+| horizon | as first reported | exploded fits removed |
+|---|---|---|
+| h=1 | +0.94 | +0.94 |
+| h=10 | +0.84 | +0.84 |
+| h=50 | +0.68 | +0.69 |
+| h=100 | +0.39 | +0.33 |
+| h=200 | +0.30 | +0.24 |
+| h=500 | +0.24 | **+0.13** |
+
+The conclusion is **unchanged and slightly strengthened**: capacity's benefit at long horizons
+is even smaller than we said once the exploded runs are excluded. (Rossler drops out entirely,
+leaving 17 systems, because 39 of its fits were affected.)
+
 ### One bug this exposed
 
 Rossler's error at h=500 reads **224** for the smallest model and **37** for the largest. Those
