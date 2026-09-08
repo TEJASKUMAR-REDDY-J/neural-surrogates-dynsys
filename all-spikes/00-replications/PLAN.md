@@ -1,7 +1,52 @@
 # Replication battery — end-to-end tests of what the literature actually gives us
 
 Created 2026-09-07. Revised 2026-09-07 (costs re-derived from measurements; plain-language
-explanations added). Status: **plan only, nothing run yet.**
+explanations added). **Closed out 2026-09-08 — everything here has been run.**
+
+> **This document is the plan as it was written, kept for the record.** What actually happened
+> is in [RESULTS.md](RESULTS.md); how the machinery works is in [METHODS.md](METHODS.md). The
+> section below tracks what each planned experiment turned into, including the three that had
+> to be rerun and the one that could not be delivered. The plan itself is left unedited so the
+> difference between what we intended and what we found stays visible.
+
+---
+
+## What actually happened to each of these
+
+| planned | outcome |
+|---|---|
+| **R0** environment probe | Ran. 124/129 systems usable. Found our cost model **14× optimistic** and the library's own solver unusable; both fixed before anything else ran. |
+| **R1** coarse-graining | Ran, 1,698 checks. Reproduced two published transitions exactly. Found reducibility is **scale-indexed, not binary** (36% → 59% → 79% by block size) and stable under a 100× search increase. We **overstated** the search-effort conclusion at first and corrected it: past block size 4 brute force covers 1 part in 10¹⁴ and says nothing. |
+| **R2** instrument redundancy | Ran, 45 systems, later extended to all 124. Answer: **~5–6 independent axes**, so the project's assumption survives. Also produced the unplanned **R2b** — the statistics were reading our sampling rate, and the fix *reorders* systems rather than shifting them. |
+| **R3** cheap predictor | Ran — and the result was **a mirage** (R²=0.59 → 0.0001 once seven clock-carrying systems were removed). Rerun as **R3b** (30 clean systems) and again as **N3** (all 108). |
+| **R4** capacity × data | Ran and **could not answer its own question** — task too easy, ruler too short. Rerun as **R4b** (fixed) and **R4c** (18 systems), which killed our own best explanation. |
+| **R5** non-monotone capacity | Ran. The published claim **does not reproduce** at any of 6 tolerances on either of 2 map families. |
+| **R6** pointwise vs structural | Ran, free off R4b. Capacity buys short-horizon accuracy (+0.84) and **nothing structural** (+0.06 to +0.16). |
+| **R7** copying baseline | Folded into R3/R3b/N3 as planned. The single most-repeated finding in the battery: **the trained network ties with copying**, 46/108, median ratio exactly 1.00. |
+| **R8** direct vs rollout | Ran, then rerun as **R8b** with a long enough ruler and a fairness fix. Direct prediction fails **earlier**, so the long-horizon wall is an **information limit**, not error accumulation. |
+
+### Added after the plan was written
+
+| | why | outcome |
+|---|---|---|
+| **R9** iterative refinement | User question: can more passes fix a wrong answer? | Helps for ~3 passes, then **reliably degrades**; never improves beyond its training budget. |
+| **N3** predictor at full scale | 27% explained on 30 systems needed more power | Holds and strengthens to **~32%**; corrected our claim that the Lyapunov exponent is anti-predictive. |
+| **N5** batch-size sweep | 256 was convention, tested only upward | **256 was suboptimal** (1.66 vs 1.07 relative error); our earlier single-seed check was underpowered. |
+| **N2** observational noise | Everything assumed perfect measurement | Surrogates cope; **the predictor dies at 1% noise**. And at 20% noise the network finally beats copying — its real advantage is **denoising**. |
+| **N1** Kuramoto–Sivashinsky | The largest coverage gap: no spatially extended system | **Not delivered.** Integrator destabilises; canonical published parameters fail the same way, so the fault is ours. Parked with a full record. |
+
+### Kill criteria, and whether they fired
+
+Written down before the runs, which is what stops the goalposts moving.
+
+| criterion | fired? |
+|---|---|
+| R1: reducible fraction moves with search width → CA substrate is dead | **No** — moved by zero under a 100× search increase |
+| R2: statistics collapse to 1–2 dimensions → nothing to predict | **No** — 5.62 effective dimensions |
+| R3: cheap statistics explain ≥85% → learned predictor is pointless | **No** — 32% at best, so two thirds remains open |
+
+All three passed. The direction was not killed on its own terms — it was **reshaped by N2**,
+which was not a pre-registered criterion because we had not thought to ask about noise.
 
 ---
 

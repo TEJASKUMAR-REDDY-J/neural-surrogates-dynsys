@@ -5,6 +5,9 @@ plain language, assuming nothing.
 
 Read it if you want to know what a number in the results actually came from.
 
+If you want to see the thing itself before the machinery, the attractor pictures are at the top
+of [RESULTS.md](RESULTS.md).
+
 ---
 
 ## Part 1 — What we are even studying
@@ -313,6 +316,68 @@ long-horizon wall is caused by accumulation, the big jump should sail past it. I
 the same place, the wall is about information running out. That distinguishes two published
 positions with one experiment.
 
+### R9 — if the first answer is wrong, can more passes fix it?
+
+Instead of answering in one shot, the network produces a draft, looks at it, and revises. One
+network takes *(state now, how far ahead, current guess)* and proposes a correction; the first
+guess is "nothing changes"; then it runs on its own output, repeatedly.
+
+Training penalises **every** pass, not only the last, so the network cannot make the
+intermediate passes meaningless and only get the final one right. Trained with **4** passes,
+evaluated with **16** — deliberately four times beyond what it ever saw, because that is where
+a genuinely stable method separates from a lucky one.
+
+![R9](results/analysis/r9_refinement.png)
+
+### N3 — the predictor question on the whole library
+
+R3 asked which cheap statistic predicts surrogate skill, on 30 systems. N3 repeats it on **all
+108** systems that have no clock coordinate.
+
+One thing this exposed about the pipeline: R3 draws its predictor features from R2, so scaling
+R3 up means **profiling the whole library first**. Our first attempt silently ran on 33 systems
+because R2 had only ever covered 45.
+
+![N3](results/analysis/n3_predictors.png)
+
+### N5 — was batch size 256 a good choice?
+
+Chosen by convention, and only ever tested upward. This sweeps 5 batch sizes × 3 systems × 3
+seeds, with the learning rate scaled to batch size so it compares recipes rather than
+penalising large batches for an unadjusted step.
+
+![N5](results/analysis/n5_batch_size.png)
+
+### N2 — does any of it survive imperfect measurement?
+
+Everything else assumes perfect observation: trajectories generated from exact equations at one
+part in a billion. Real measurements are not like that. So we add noise as a fraction of each
+coordinate's spread, at 1%, 5% and 20%, and re-run the predictor question.
+
+The predictor's input statistics are computed on the **clean** trajectories, so this is the
+generous setting — the predictor gets perfect knowledge of the system and only the model's
+training data is corrupted.
+
+![N2](results/analysis/n2_noise.png)
+
+### N1 — Kuramoto-Sivashinsky: attempted, not delivered
+
+The one planned experiment we did not get working. Everything above is a handful of variables;
+the neural-operator literature we are arguing with is about systems spread over space with
+thousands of variables. Kuramoto-Sivashinsky is the standard cheap bridge — a real chaotic PDE
+small enough for a CPU.
+
+We implemented the standard spectral scheme (ETDRK4). It produces correct-looking chaos and
+then destabilises past roughly 11,000 steps. Tried: an initial condition scaled to the domain
+(a genuine bug, fixed, not the cause), 2/3 dealiasing, four step sizes, zeroing the Nyquist mode
+as the published code does, and pinning the undamped mean mode.
+
+**The tell that it is our bug and not a parameter choice:** the canonical published settings
+diverge the same way, and those are documented as stable.
+
+It is parked with the full list in `NOTES.md` rather than shipped half-working, and nothing
+depending on it has been claimed. This is the largest remaining gap in the work.
+
 ---
 
 ## Part 7 — The mistakes, and how we caught them
@@ -375,7 +440,33 @@ R4's first run was clean and useless. Both measures were pinned:
 1,000 steps (2.7 → 67 Lyapunov times), and pick systems spanning a real range of attractor
 dimension instead of six that all happened to sit near 2.1.
 
-### 4. Our own best finding did not replicate
+### 4. Batch size 256 was suboptimal, and our first check of it was underpowered
+
+We tested batch sizes *upward* only, found 1024 much worse, and kept 256. A later single-seed
+check hinted 128 might be better but could not separate them from noise, and we reported that
+nothing could be said.
+
+With **3 seeds** the answer is clear: relative rollout error is 1.07 at batch 64, 1.17 at 128
+and **1.66 at 256**. Our single-seed check was simply underpowered — the same failure this
+battery keeps finding in published work.
+
+No conclusion is affected, because every claim we make is a *relative* comparison under one
+recipe held constant everywhere; a uniformly worse recipe shifts conditions together without
+reordering them. It does mean our **absolute** error levels sit about 1.7× above achievable,
+which is exactly why we never claimed an absolute error floor for any system.
+
+### 5. A divergence check that did not check enough
+
+We flagged blown-up rollouts by testing whether the numbers were *finite*. But 224 is a
+perfectly good float. Across 573 capacity fits, **42 had clearly exploded and not one was
+flagged** — 39 of them the same system.
+
+The check now judges divergence against the system's own scale: anything wandering more than
+ten times the true trajectory's range is not a forecast, whatever its floating-point status.
+Re-running the affected analysis without those fits left the short-horizon numbers identical
+and lowered the long-horizon ones, so the conclusion was unchanged and slightly strengthened.
+
+### 6. Our own best finding did not replicate
 
 R4b found that attractor dimension predicted which systems stop rewarding extra capacity,
 correlation **−0.71**. Clean mechanism, quantitative, novel.
@@ -385,7 +476,7 @@ On 18 systems: **−0.22**. Noise. It was six systems getting lucky.
 We had queued that replication *before* knowing the answer, which is the only reason we caught
 it. A correlation from six points is a hypothesis, not a finding.
 
-### 5. Two software failures worth recording
+### 7. Two software failures worth recording
 
 **A crash destroyed two hours of work — and it didn't.** The cellular-automata sweep died at
 block size 6 on an integer overflow (2⁶⁴ possibilities cannot be counted in a 64-bit number),
@@ -429,14 +520,29 @@ that down first is what stops you moving the goalposts when the number arrives.
 
 | | |
 |---|---|
-| systems examined | 129 tried, 124 usable, 45 measured in depth, 18 in the final capacity study |
-| neural networks trained | **~2,300** |
+| systems examined | 129 tried, 124 usable, **124 profiled in depth**, 108 in the predictor study, 18 in the capacity study |
+| neural networks trained | **~2,900** |
 | cellular-automata checks | 1,698 |
-| total logged results | **~5,700** |
-| run logs | 30 |
-| experiments | 9, three of them rerun after finding a flaw |
-| wall-clock time | about 13 hours on a 2-core laptop, no GPU |
+| total logged results | **~6,550** across 46 run logs |
+| result rows on disk | 8,977 |
+| figures | 17 |
+| experiments | **12**, three of them rerun after finding a flaw in our own design |
+| wall-clock time | about 20 hours on a 2-core laptop, no GPU |
+
+### What we got wrong, and caught
+
+Seven times, a number looked wrong and chasing it changed the answer:
+
+1. the complexity statistics were reading our sampling rate, not the systems
+2. seven systems carrying a clock coordinate manufactured our most exciting result
+3. the crux experiment was saturated at both ends and could not answer its question
+4. our search-effort conclusion held only where the search was exhaustive
+5. attractor dimension "explaining" the capacity ceiling did not survive 6 systems → 18
+6. the Lyapunov exponent being *anti*-predictive was small-sample noise
+7. batch size 256, and the underpowered check that let it stand
+
+**Four of those would have become confident, published-looking claims.** Three of them were
+ours rather than the literature's.
 
 The single most important design choice was spending the first day testing the *instruments*
-instead of running the experiment. Five things were wrong. Four of them would have produced
-confident, wrong, publishable-looking claims.
+instead of running the experiment.

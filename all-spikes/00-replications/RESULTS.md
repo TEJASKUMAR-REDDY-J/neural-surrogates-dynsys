@@ -58,6 +58,33 @@ wrong.
 
 ---
 
+## First, what any of this looks like
+
+Before the numbers, the thing itself. Left is the real system. Middle is what the trained
+model draws when you let it run on its own for 3,000 steps. Right is how the error grows,
+against the training-free copying baseline, with the dotted line marking "no better than
+guessing the average".
+
+![What the surrogate sees](results/analysis/trajectories_attractors.png)
+
+Read the middle column top to bottom. Rossler and Lorenz produce a recognisable attractor —
+the model has learned the *shape* even where it cannot say where the system is at a given
+moment. HyperCai is blurrier. Bouali2, at attractor dimension 16.5, is not the same object at
+all.
+
+And the same thing as a time series — truth in black, the model's free run in red, with the
+point marked where the forecast stops being useful:
+
+![Truth against forecast over time](results/analysis/trajectories_timeseries.png)
+
+This is the picture behind two results that come later. **R6**: the middle column can look
+right while the forecast is badly wrong, because getting the shape right and knowing where the
+system is are different skills. **R8b**: the red line does not drift gently away, it tracks and
+then departs — which is what an information limit looks like, rather than error slowly
+accumulating.
+
+---
+
 ## R0 — Can this laptop do the work at all?
 
 **In one sentence:** yes, but two things we assumed turned out to be false, and finding
@@ -444,6 +471,9 @@ That does not mean the models are broken — on some systems they win handsomely
 **copying has to be reported alongside every surrogate result**, because without it a reader
 cannot tell learning from lookup.
 
+
+![R3b: predictors and the copying baseline](results/analysis/r3_predictors_and_parroting.png)
+
 ---
 
 ## R8 — 63 small steps, or one big jump?
@@ -609,6 +639,9 @@ You asked: if a model has genuinely learned the rule, why should it step through
 still worth having, on five of six systems. And the reason to hope otherwise — that jumping
 avoids accumulated error — does not pay off: jumping fails *sooner*, because what runs out at
 long horizons is information, not arithmetic precision.
+
+
+![R8: small steps versus one big jump](results/analysis/r8_direct_vs_rollout.png)
 
 ---
 
@@ -812,6 +845,9 @@ powered. The dimension test will stay underpowered, because the catalogue simply
 contain many low-dimensional attractors above dimension 2.5 — and that limitation is worth
 reporting rather than hiding.
 
+
+![R4b: capacity scaling per system](results/analysis/r4_capacity_scaling.png)
+
 ## R4c — testing our own best idea on three times as many systems, and losing it
 
 **In one sentence:** the horizon effect is real and holds on all 18 systems, but our
@@ -938,6 +974,9 @@ somewhere genuinely new — and three times the data says it was chance.
 The general lesson, and the reason the replication was queued before we knew the answer: a
 correlation from six points is a hypothesis, not a finding.
 
+
+![R4c: capacity helps at short horizons only](results/analysis/r4c_horizon_effect.png)
+
 ---
 
 ## N3 — the predictor question on the whole library
@@ -1008,6 +1047,9 @@ Exactly the same picture, four times the evidence. **A trained neural surrogate 
 precisely as good as finding the most similar moment in the past and copying what happened
 next.** This is now one of the best-supported results in the battery.
 
+
+![N3: what predicts surrogate skill](results/analysis/n3_predictors.png)
+
 ---
 
 ## N5 — was batch size 256 actually a good choice?
@@ -1073,6 +1115,9 @@ issue R4c turned up, where our check tested whether values were *finite* but not
 were *bounded*. It is now visible in three separate experiments, so it should be fixed properly:
 flag a rollout as diverged when it exceeds a sane multiple of the system's own range, not merely
 when it becomes infinite.
+
+
+![N5: batch size against error](results/analysis/n5_batch_size.png)
 
 ---
 
@@ -1170,6 +1215,9 @@ guess — **1% is already enough.**
 **Caveat.** 40 systems, three seeds, one noise model (independent Gaussian on every coordinate).
 Real measurement noise is often correlated in time, or affects some coordinates and not others.
 Whether the cliff is this sharp under a realistic noise model is not established here.
+
+
+![N2: skill survives noise, predictability does not](results/analysis/n2_noise.png)
 
 ---
 
@@ -1278,6 +1326,9 @@ So the honest summary of the mechanism: **iterative refinement is a modest, boun
 over single-pass prediction, with a real risk of over-iterating, and it does not rescue direct
 prediction from losing to plain step-by-step rollout.**
 
+
+![R9: refinement improves then degrades](results/analysis/r9_refinement.png)
+
 ---
 
 ## R6 — Does a bigger model get the *shape* right, or just the next step?
@@ -1347,6 +1398,9 @@ separately. We now do.
 **Caveat.** Six systems, and each score comes from 21 models (7 capacities × 3 seeds). The
 per-system numbers are noisy — Thomas is inconsistent with the others at h=50 — so we lean on
 the median across systems, not on any single row.
+
+
+![R6: capacity buys accuracy, not structure](results/analysis/r6_pointwise_vs_structural.png)
 
 ---
 
@@ -1430,6 +1484,9 @@ threshold — and therefore to manufacture a 47% "capacity drop" out of nothing.
 We are not saying their effect is noise. We are saying **the published evidence cannot
 distinguish it from noise**, and that our attempt to reproduce it at higher resolution, with
 seeds, at six tolerances and on two families, found nothing.
+
+
+![R5: required capacity against the chaos dial](results/analysis/r5_required_capacity.png)
 
 ## R1 — Is "this system has a simple summary" a real property?
 
@@ -1571,3 +1628,6 @@ It wasn't. Every row had already been streamed to the run log as it was produced
 1,698 rows were recovered (`src/r1_coarse_grain/recover.py`). That is precisely why the
 logging format writes one line per unit of work instead of one file per run — and it is the
 first time it has actually paid for itself.
+
+
+![R1: reducibility against block size and search width](results/analysis/r1_reducibility.png)
