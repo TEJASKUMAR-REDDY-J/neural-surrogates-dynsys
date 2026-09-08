@@ -7,9 +7,9 @@ of it.
 Plan and hypotheses: [PLAN.md](PLAN.md). Raw numbers: `results/`. Figures:
 `results/analysis/`. Run logs: `logs/`.
 
-**Status:** everything done except R4c, the last confirmation run. R5 is written up from its
-data; R1's final block-size-6 tier was deliberately stopped (see R1 for why it could not have
-been informative).
+**Status:** all runs complete. 18 systems in the final capacity analysis, 573 fits.
+R1's final block-size-6 tier was deliberately stopped (see R1 for why it could not have been
+informative).
 
 ---
 
@@ -23,15 +23,15 @@ been informative).
 | **R3** | Does a cheap statistic already predict how well a network will do? | Looked like yes (R² 0.59). **A mirage** — 7 systems with a clock coordinate. Clean systems: **0.0001**. |
 | **R3b** | Asked again, honestly. | **~27%** is genuinely predictable — from spectral entropy + correlation dimension. The Lyapunov exponent is **anti**-predictive (−0.146). And a trained net ties with plain copying, **median ratio 1.00**. |
 | **R4** | Does a model stop improving however big you make it? | First pass **could not answer** — we made the task too easy and the ruler too short. Both fixed. |
-| **R4b** | The crux, properly configured. | Capacity helps hugely at short horizons, **not at all** at long ones. Where it stops varies **450×** between systems, and λ does not explain it. **This may reconcile the three papers that disagree.** |
+| **R4b** | The crux, properly configured. | Capacity helps hugely at short horizons and much less at long ones. On 6 systems, attractor dimension appeared to explain which stop early (−0.71). |
+| **R4c** | Does that hold on more systems? | **The horizon effect holds** (18/18 systems at h=1, median 0.94 → 0.24 by h=500). **The explanation does not.** Attractor dimension −0.22, λ +0.19 — both noise. The −0.71 was six systems getting lucky. |
 | **R8** | 63 small steps, or one big jump? | **Small steps win** on 5 of 6 systems. |
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
-| **R4c** | Does λ explain the 450× spread, on more systems? | *Running* — 14 systems spanning a 200× range in λ. |
 
-### The four results we did not plan for
+### The five results we did not plan for
 
 Every one came from noticing a number looked wrong and chasing it. That is what a calibration
 battery is *for*.
@@ -41,8 +41,12 @@ battery is *for*.
 3. **R4** — the crux experiment was saturated at both ends and could not answer its question.
 4. **R1** — our search-effort conclusion only held where the search was exhaustive; we had
    overstated it and corrected it.
+5. **R4c** — our own most attractive finding, that attractor dimension explains where capacity
+   stops paying, did not survive going from 6 systems to 18.
 
-Three of the four would have become confident published claims if we had skipped this pass.
+Four of the five would have become confident published claims if we had skipped this pass.
+The last one is the sharpest lesson: it was *our* result, it had a clean mechanism, and it was
+wrong.
 
 ---
 
@@ -693,9 +697,13 @@ systems.
 
 ## R4b — the crux, properly configured
 
-**In one sentence:** making the model bigger helps enormously at short horizons and **not at
-all** at long ones — and the horizon where it stops paying varies **450×** between systems,
-which the Lyapunov exponent does not explain.
+**In one sentence:** making the model bigger helps enormously at short horizons and much less
+at long ones — and the horizon where it stops paying varies hugely between systems.
+
+> **Corrected by R4c.** This section originally also claimed that *attractor dimension*
+> explains which systems stop early (correlation −0.71). On six systems it did. On eighteen
+> it does not (−0.22). The horizon effect survives; the explanation does not. The corrected
+> analysis is in R4c below, and this section is left as written so the correction is visible.
 
 378 models across 6 systems spanning attractor dimension 2.0 to 16.5. Zero censoring this
 time: the 1,000-step ruler was long enough for every single fit.
@@ -791,6 +799,116 @@ Lyapunov exponent (0.011 to 2.325), which makes the "does λ explain it?" test p
 powered. The dimension test will stay underpowered, because the catalogue simply does not
 contain many low-dimensional attractors above dimension 2.5 — and that limitation is worth
 reporting rather than hiding.
+
+## R4c — testing our own best idea on three times as many systems, and losing it
+
+**In one sentence:** the horizon effect is real and holds on all 18 systems, but our
+explanation for it — that attractor dimension decides which systems stop early — **does not
+replicate**, and we are retracting it.
+
+R4b ran on 6 systems. This adds 12 more, spanning a 200× range in Lyapunov exponent and
+attractor dimensions from 1.55 to 16.5. Same protocol. **573 fits in total.**
+
+### What survived
+
+Does extra capacity still help, at each horizon? (+1 = helps a lot, 0 = no help.)
+
+| horizon | median | systems where it still clearly helps |
+|---|---|---|
+| 1 | **0.94** | **18 / 18** |
+| 10 | 0.84 | 16 / 18 |
+| 50 | 0.68 | 16 / 18 |
+| 100 | 0.39 | 11 / 18 |
+| 200 | 0.30 | 9 / 18 |
+| 500 | **0.24** | 9 / 18 |
+
+```
+h=1     ████████████████████  0.94   every system
+h=10    ██████████████████    0.84
+h=50    ██████████████        0.68
+h=100   ████████              0.39   half the systems
+h=200   ██████                0.30
+h=500   █████                 0.24
+```
+
+**This is solid.** A bigger model reliably buys short-horizon accuracy on every system we
+tried, and its value decays steadily with horizon until, past about 100 steps, it helps on
+only half of them. The Gilpin-versus-Duraisamy reconciliation stands: they were measuring at
+different horizons.
+
+Note the earlier phrasing of "not at all" was too strong. At h=500 the median is 0.24, not 0 —
+capacity keeps helping a little, mostly on the systems whose forecasts are still meaningful
+at all.
+
+### What did not survive
+
+R4b found that **attractor dimension** predicted which systems stop rewarding capacity early,
+at correlation **−0.71**. It was our most attractive result: a clean mechanism, a quantitative
+prediction, and an answer nobody in either literature had.
+
+On 18 systems:
+
+| predictor | correlation with where capacity stops paying |
+|---|---|
+| attractor dimension | **−0.22** |
+| Lyapunov exponent | +0.19 |
+| 1 / Lyapunov exponent | −0.19 |
+
+All three are noise. **The −0.71 was six systems getting lucky.** With six points, a
+correlation of that size arises by chance often enough that it should never have been
+believed without a replication — which is precisely why the replication was queued.
+
+We also found the fitting procedure itself was unreliable here: the power-law fit returned
+improvement rates above 4 on several systems, which is not physically sensible and signals
+that the error-versus-capacity curve was not monotone enough to fit. The table above
+deliberately uses a **fit-free rank correlation** instead, so the surviving conclusion does
+not depend on a fragile fit.
+
+### A simpler explanation that fits better
+
+Look at where the error actually ends up after 500 steps (1.0 = no better than guessing the
+average):
+
+| system | smallest model | largest model | gain from 100× capacity |
+|---|---|---|---|
+| HenonHeiles | 0.096 | 0.160 | −0.063 |
+| CaTwoPlusQuasiperiodic | 0.659 | 0.499 | +0.160 |
+| GlycolyticOscillation | 0.863 | 0.591 | +0.272 |
+| DequanLi | 1.118 | 0.739 | +0.379 |
+| … | | | |
+| Lorenz | 1.459 | 1.461 | −0.002 |
+| ChenLee | 1.477 | 1.477 | 0.000 |
+| HyperCai | 1.466 | 1.478 | −0.013 |
+
+**Median gain from a hundredfold bigger model at h=500: +0.038.** Essentially nothing.
+
+But look at *which* systems still gain. They are the ones whose error is still **below 1.0** —
+still forecasting something. The systems stuck at ~1.45 gain nothing, because there is nothing
+left to gain: the forecast is already worse than guessing.
+
+So the parsimonious story is not "each system has its own capacity ceiling set by its
+geometry." It is: **capacity helps whenever the forecast is still meaningful, and stops
+helping once the forecast has decayed to useless.** That needs no per-system mechanism, and it
+is what the data supports.
+
+### One bug this exposed
+
+Rossler's error at h=500 reads **224** for the smallest model and **37** for the largest. Those
+are blown-up rollouts. Our divergence check only tested whether the long free-running
+trajectory stayed *finite*, not whether it stayed *bounded* — so numerically-exploding rollouts
+passed as valid. It affects one system out of eighteen and does not change any conclusion
+above, but the check should test magnitude, not just finiteness.
+
+### Why this section matters most
+
+Every other correction in this report caught a flaw in a published claim, or in a data
+pipeline. **This one caught our own best idea.** It had a mechanism, a number, and it pointed
+somewhere genuinely new — and three times the data says it was chance.
+
+The general lesson, and the reason the replication was queued before we knew the answer: a
+correlation from six points is a hypothesis, not a finding.
+
+---
 
 ## R6 — Does a bigger model get the *shape* right, or just the next step?
 
