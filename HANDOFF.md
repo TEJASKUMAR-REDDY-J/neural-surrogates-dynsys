@@ -116,8 +116,10 @@ background/
   03-data-representations.md           how data reaches models; why representation is a
                                        free variable that moves what we measure
   04-design-questions-and-next-experiments.md   is dysts enough, batch size, R0 failures
-  05-devils-advocate-and-reframing.md  ** READ THIS ** the honest assessment of what the
-                                       project is now worth and what to do about it
+  05-devils-advocate-and-reframing.md  the honest assessment of what the project is now
+                                       worth and what to do about it
+  06-reframed-proposal-and-scope.md    ** READ THIS ** the reframed question, the scope, the
+                                       plan, and the pre-registered kill conditions
 
 all-spikes/00-replications/
   PLAN.md      the plan as written, plus an outcome tracker for what each became
@@ -164,8 +166,11 @@ the novel core.
 
 **Pre-registered kill conditions for the reframe**, so they can be checked rather than argued:
 
-- If the copying tie disappears on a spatially extended system, the central claim is
-  low-dimension-specific and the spine is gone.
+- ~~If the copying tie disappears on a spatially extended system, the spine is gone.~~
+  **Superseded by N6**, which predicts it will disappear and says why: the tie is caused by
+  dense benchmark coverage, not by the networks. The kill condition is now quantitative —
+  *if, holding the system fixed, the surrogate's advantage does not rise as the training set
+  shrinks*, the coverage law is wrong and the direction dies. See `background/06`.
 - If the noise crossover does not reproduce under realistic noise, the denoising explanation is
   an artefact of independent Gaussian noise.
 
@@ -205,4 +210,8 @@ Say this plainly if asked, rather than letting it slide:
 - **Kuramoto–Sivashinsky (N1).** The highest-value planned addition. Attempted, integrator
   unstable, parked with a full record. Nothing depending on it has been claimed. **This is the
   largest gap in the work.**
-- **A written research proposal** for the reframed direction. Offered, not yet requested.
+- ~~**A written research proposal** for the reframed direction.~~ **Delivered** as
+  `background/06-reframed-proposal-and-scope.md` on 2026-09-08.
+- **The controlled coverage experiment.** N6 established the coverage law observationally
+  across 107 systems. The interventional version — fix the system, vary the training-set size —
+  is the first task of the next round and is where the direction lives or dies.

@@ -1,0 +1,59 @@
+{
+  "n_systems": 107,
+  "coverage_median": 0.01077443187377035,
+  "coverage_range": [
+    0.0003745246694566975,
+    0.09879345677237372
+  ],
+  "rho_coverage_vs_log_ratio": 0.5579965329316475,
+  "p_value": 4.26290855207956e-10,
+  "shuffle_null_p95": 0.18704730481697593,
+  "shuffle_empirical_p": 0.0,
+  "loo_rho_min": 0.5456573116815038,
+  "loo_rho_max": 0.5828634225703093,
+  "rho_dim_vs_log_ratio": 0.3139083502342996,
+  "rho_lyap_vs_log_ratio": 0.14644396504396687,
+  "partial_coverage_given_dim": 0.48838448685155084,
+  "partial_dim_given_coverage": 0.05644966341215836,
+  "rho_coverage_vs_parrot_vpt": -0.44426278543668746,
+  "rho_coverage_vs_model_vpt": -0.01963238447702249,
+  "censored_fraction": 0.3426791277258567,
+  "quartiles": [
+    {
+      "band": "densest",
+      "n": 27,
+      "coverage_median": 0.005,
+      "copying_vpt": 200.0,
+      "model_vpt": 119.0,
+      "median_ratio": 0.98,
+      "model_wins": 6
+    },
+    {
+      "band": "dense",
+      "n": 27,
+      "coverage_median": 0.009,
+      "copying_vpt": 200.0,
+      "model_vpt": 196.0,
+      "median_ratio": 1.0,
+      "model_wins": 6
+    },
+    {
+      "band": "sparse",
+      "n": 26,
+      "coverage_median": 0.0126,
+      "copying_vpt": 103.5,
+      "model_vpt": 117.0,
+      "median_ratio": 1.0,
+      "model_wins": 11
+    },
+    {
+      "band": "sparsest",
+      "n": 27,
+      "coverage_median": 0.0433,
+      "copying_vpt": 48.0,
+      "model_vpt": 81.0,
+      "median_ratio": 1.6364,
+      "model_wins": 22
+    }
+  ]
+}

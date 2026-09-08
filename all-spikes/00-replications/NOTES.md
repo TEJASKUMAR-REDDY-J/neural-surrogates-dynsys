@@ -171,3 +171,38 @@ without the affected fits leaves short horizons identical and lowers long ones (
 noiseless-simulation result. The horizon story (R4c + R8b) is the strongest surviving spine. The
 denoising explanation is the most novel single finding. Methodology findings are cheap and
 solid. A written proposal has been offered and not yet requested.
+
+## 2026-09-08 — N6: the copying tie is a property of the benchmark, not of the networks
+
+**What.** While answering a question about future direction, checked something that cost no
+training: does the model-versus-copying ratio track how densely the training data covers the
+attractor? It does, and strongly.
+
+**Result.** 107 systems. Coverage (median nearest-neighbour distance / attractor spread) vs
+log(model VPT / copying VPT): rho = +0.558, p = 4e-10. Shuffle control 95th pct 0.187,
+empirical p = 0.0000. Leave-one-out +0.546 to +0.583, no sign flips. State dimension is a
+proxy only: partial(coverage | dim) = +0.488, partial(dim | coverage) = +0.056.
+
+**The decomposition is the finding.** Coverage vs copying's horizon: -0.444. Coverage vs the
+network's horizon: -0.020. Sparse coverage destroys copying and leaves the network alone. The
+median system on this benchmark has a nearest precedent 1% of the attractor away, so copying
+is near-unbeatable there - which is the entire "tie".
+
+**Caveat recorded.** Observational across systems, not a controlled manipulation, and 34% of
+runs are censored at the 200-step ruler (copying is pinned at the ceiling in the two densest
+quartiles, so the dense end understates the gap). The controlled version - fix the system,
+vary training-set size - is unrun and is now the first experiment of the next round.
+
+**Novelty threat recorded.** That analogues are rare in high dimensions is Lorenz 1969. The
+part that appears unsaid is that current benchmarks sit in the corner where the 1969 method
+already suffices. A targeted literature check must happen before this is built on.
+
+**Consequence.** The pre-registered kill condition "if the copying tie disappears on a
+spatially extended system, the spine is gone" is now the wrong test - N6 predicts it will
+disappear and says why. Replaced with a quantitative version. See
+`background/06-reframed-proposal-and-scope.md`.
+
+**Also decided.** Kuramoto-Sivashinsky stops being a prerequisite. A coupled map lattice
+(Kaneko) gives a spatially extended chaotic system with no integrator at all - explicit map,
+cannot diverge, analytic tridiagonal Jacobian so the full Lyapunov spectrum is exact rather
+than estimated. KS becomes an optional credibility upgrade rather than a blocker.

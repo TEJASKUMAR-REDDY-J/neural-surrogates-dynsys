@@ -33,13 +33,14 @@ tried, in NOTES.md, rather than shipped half-working. Nothing depending on it ha
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
 | **R9** | If the first answer is wrong, can more passes fix it? | **For about 3 passes, then it gets worse.** Pass 2 beats pass 1 in 21/24 cases, the best pass is always within the 4 it was trained for (24/24), and it *never* kept improving to pass 16 (0/24). On 7/24 cases pass 16 is >10% worse than the best - one case 291% worse. Still loses to plain stepping by 20x at short horizons. |
 | **N3** | The predictor question on the whole library (108 systems). | **Holds and strengthens.** ~**32%** predictable (up from 27%), spectral entropy best single predictor at 0.250. Copying still ties: **46/108**, median ratio **1.00**. Corrects R3b - λ is not anti-predictive, just uninformative (+0.03). |
+| **N6** | *(unplanned)* Why does the network only tie with copying? | **Because the benchmark is densely covered.** Copying's skill is set by how close the nearest past state is (rho -0.44); the network's is not (rho -0.02). Sparsest quartile: network wins **22/27**. Densest: **6/27**. The tie is a property of the data, not the network. |
 | **N5** | Was batch size 256 a good choice? | **No.** With seeds, 64-128 are clearly better; 256 costs ~**66% higher** rollout error. Conclusions unaffected (all relative comparisons), but absolute error levels sit ~1.7x above achievable. |
 | **N2** | Does any of this survive imperfect measurement? | **The surrogates do; the predictor does not.** Forecast horizon falls gracefully (1.00 -> 0.74 -> 0.36 at 0/1/5% noise), but predictability of skill collapses from **+0.29 to -0.04 at 1% noise**. The N3 result is a property of noiseless synthetic data. |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
 
-### The five results we did not plan for
+### The six results we did not plan for
 
 Every one came from noticing a number looked wrong and chasing it. That is what a calibration
 battery is *for*.
@@ -49,10 +50,12 @@ battery is *for*.
 3. **R4** — the crux experiment was saturated at both ends and could not answer its question.
 4. **R1** — our search-effort conclusion only held where the search was exhaustive; we had
    overstated it and corrected it.
-5. **R4c** — our own most attractive finding, that attractor dimension explains where capacity
+5. **N6** — the copying tie turned out to be a property of the benchmark's sampling
+   density, not of the networks.
+6. **R4c** — our own most attractive finding, that attractor dimension explains where capacity
    stops paying, did not survive going from 6 systems to 18.
 
-Four of the five would have become confident published claims if we had skipped this pass.
+Four of them would have become confident published claims if we had skipped this pass.
 The last one is the sharpest lesson: it was *our* result, it had a clean mechanism, and it was
 wrong.
 
@@ -1049,6 +1052,126 @@ next.** This is now one of the best-supported results in the battery.
 
 
 ![N3: what predicts surrogate skill](results/analysis/n3_predictors.png)
+
+---
+
+## N6 — why does the network only tie with copying?
+
+**In one sentence:** because the benchmark hands copying an easy job — the trained network
+ties on systems whose training data covers the attractor densely, **wins by 1.6x on the
+sparsest quarter**, and it is copying's skill that moves across that range, not the network's.
+
+**We did not plan this experiment either.** It came from asking what the tie is a property
+*of*. Every reading of it so far had been about the network: maybe it is not learning
+anything. This asks whether it is about the data instead. It cost no training at all — it
+reuses the stored trajectories and the already-logged N3 results.
+
+### The idea, in one picture
+
+Copying works by finding the most similar past state and replaying what came next. So its
+skill is governed by exactly one thing: **how close that nearest past state actually is.**
+
+```
+densely covered attractor           sparsely covered attractor
+
+  . . x. . . .                        .        x     .
+  . .. . . ..      <- query x ->        .            .
+  ...  ... .                                 .    .
+
+  nearest neighbour is                nearest neighbour is
+  practically the same state          somewhere else entirely
+  -> copying is unbeatable            -> copying has nothing to copy
+```
+
+So we measured coverage directly, on the same data the models and the copying baseline saw:
+the median distance from a test state to its nearest neighbour among the 8,000 training
+states, divided by the attractor's own spread. Small means densely covered.
+
+### What we found
+
+| | |
+|---|---|
+| systems | **107** |
+| median coverage | **0.011** — a typical query's nearest precedent sits **1% of the attractor away** |
+| coverage vs. the model-over-copying advantage | **rho = +0.558**, p = 4e-10 |
+
+The benchmark lives almost entirely in the dense corner. A typical "held-out" test state has a
+near-identical twin already sitting in the training set.
+
+### The checks, before believing any of it
+
+This is exactly the shape of thing that has fooled us twice already — R3's 0.59 and R4b's
+-0.71 — so it got the full treatment.
+
+| check | result |
+|---|---|
+| **shuffle control** (5,000 permutations) | 95th percentile of pure noise: **0.187**. Observed **0.558**. Empirical p = 0.0000 |
+| **leave-one-out** | rho ranges **0.546 to 0.583** across all 107 drops. No sign flips. No single system carries it |
+| **the obvious confound — is this just state dimension?** | dimension alone gives rho = +0.314. Controlling for coverage it collapses to **+0.056**, while coverage controlling for dimension **holds at +0.488** |
+| **Lyapunov exponent** | rho = +0.146, p = 0.13. Nothing |
+
+So dimension was a proxy. **Coverage is the variable that carries it** — which is what the
+mechanism predicts, since dimension matters only because it makes coverage sparse.
+
+### The decomposition — this is the part that matters
+
+A ratio can move for two reasons. So we split it.
+
+| | correlation with coverage |
+|---|---|
+| **copying's** forecast horizon | **rho = -0.444** — sparse coverage wrecks it |
+| **the network's** forecast horizon | **rho = -0.020** — it barely notices |
+
+| coverage quartile | median coverage | copying | network | ratio | network wins |
+|---|---|---|---|---|---|
+| densest | 0.005 | **200** *(at the ruler)* | 119 | 0.98 | 6 / 27 |
+| dense | 0.009 | **200** *(at the ruler)* | 196 | 1.00 | 6 / 27 |
+| sparse | 0.013 | 104 | 117 | 1.00 | 11 / 26 |
+| **sparsest** | **0.043** | **48** | **81** | **1.64** | **22 / 27** |
+
+Read the two middle columns downward. The network's horizon wanders between 80 and 200 with no
+trend. **Copying falls off a cliff, from the ruler ceiling to 48 steps.** The tie was never
+about the network.
+
+**Caveat, and it matters.** 34% of runs hit the 200-step measurement ruler, and in the two
+densest quartiles copying is pinned there — its true skill is *higher* than 200, unmeasured.
+That makes the dense end of this table an understatement, not an overstatement. It also means
+the network's dip to 119 in the densest band should not be read as a trend: those systems
+differ in other ways too, and the robust statement is the correlation, not the row.
+
+### What this changes
+
+Three things, and the third reframes the project.
+
+1. **It explains the single most-repeated finding in the battery.** "The trained network ties
+   with copying" is not evidence that the network learned nothing. It is evidence that the
+   benchmark was densely sampled.
+
+2. **It converts a binary into a quantity.** We had pre-registered a kill condition: *if the
+   copying tie disappears on a spatially extended system, the spine is gone.* That is now the
+   wrong test, because we can predict in advance that it will disappear, and say why. The
+   sharp version is quantitative — **does the advantage track coverage, at the rate this
+   predicts, on a system nobody has looked at?**
+
+3. **It is a decision rule you can run before training anything.** Measure your nearest-
+   neighbour distance. If it is about 1% of your data's spread, a fifteen-line lookup will
+   match whatever you build, and your architecture comparison is measuring nothing.
+
+**What this is not.** It is observational across 107 systems, not a controlled manipulation.
+Coverage is entangled with everything else that differs between systems. The controlled
+version is cheap and unrun: **hold the system fixed and vary the training-set size**, which
+moves coverage directly — our own self-check moves it from 0.30 to 0.007 by going from 1,000
+to 16,000 points. If the advantage tracks coverage along that axis too, the mechanism is
+established rather than inferred.
+
+**And the honest novelty note.** That analogues become useless in high dimensions is not new —
+it is Lorenz's 1969 argument about naturally occurring atmospheric analogues, and the whole
+analogue-forecasting literature rests on it. What appears not to have been said is the
+consequence: **modern surrogate benchmarks sit in the corner of that regime where the 1969
+method already suffices**, which is why architecture comparisons on them come out so flat.
+
+
+![N6: coverage explains the copying tie](results/analysis/n6_coverage.png)
 
 ---
 

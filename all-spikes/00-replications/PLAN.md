@@ -33,6 +33,7 @@ explanations added). **Closed out 2026-09-08 — everything here has been run.**
 | **N3** predictor at full scale | 27% explained on 30 systems needed more power | Holds and strengthens to **~32%**; corrected our claim that the Lyapunov exponent is anti-predictive. |
 | **N5** batch-size sweep | 256 was convention, tested only upward | **256 was suboptimal** (1.66 vs 1.07 relative error); our earlier single-seed check was underpowered. |
 | **N2** observational noise | Everything assumed perfect measurement | Surrogates cope; **the predictor dies at 1% noise**. And at 20% noise the network finally beats copying — its real advantage is **denoising**. |
+| **N6** coverage density | Asked what the copying tie is a property *of* | **It is a property of the benchmark.** Coverage predicts the network's advantage (rho +0.56, n=107, controls passed); it moves copying's skill (-0.44) and not the network's (-0.02). Costs no training. |
 | **N1** Kuramoto–Sivashinsky | The largest coverage gap: no spatially extended system | **Not delivered.** Integrator destabilises; canonical published parameters fail the same way, so the fault is ours. Parked with a full record. |
 
 ### Kill criteria, and whether they fired

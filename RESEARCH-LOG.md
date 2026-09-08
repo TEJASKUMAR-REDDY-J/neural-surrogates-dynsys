@@ -215,3 +215,51 @@ parroting matches our trained models then every leap-horizon claim downstream is
 **Nothing has been run yet.** R0 is the first task and blocks everything except R1.
 
 **Next.** Await user go-ahead to execute the battery, starting with R0 → R2 → R7.
+
+## 2026-09-08 — Session 3: devil's advocate, then a reframe with a measured mechanism
+
+**What.** Argued the project down as hard as it can be argued
+(`background/05-devils-advocate-and-reframing.md`), then answered four direction questions:
+what brings value now, how neural cellular automata fit, what it takes for a surrogate to
+actually win, and what the problem statement and scope should be if rewritten
+(`background/06-reframed-proposal-and-scope.md`).
+
+**The verdict on the original statement.** Down sharply. All four original claims were either
+already known (2003/2004/2006 nonlinear dynamics, 2023 at scale) or died in our own runs. Our
+one distinctive positive finding (-0.71) did not replicate. The predictor is a
+noiseless-simulation artefact. And the central capacity question needs 10^9 parameters, which
+this hardware cannot reach. Process succeeded; hypothesis failed. That is a permitted outcome
+under `research-philosophy.md` and it is what happened.
+
+**The result that changed the direction (N6).** Checkable for free from existing data. The
+copying tie is not a fact about neural networks — it is a fact about the benchmark. Coverage
+density predicts the network's advantage at rho = +0.558 across 107 systems (shuffle 95th pct
+0.187, leave-one-out stable, survives controlling for state dimension), and the decomposition
+shows coverage moves *copying's* skill (-0.44) and not the *network's* (-0.02). The median
+system's held-out test state has a near-twin 1% of the attractor away.
+
+**Reframed question.** From "which architecture will work?" to **"when is training a surrogate
+worth it at all, and can you tell before you train?"** The free variables are properties of the
+dataset — coverage and noise — not of the model. Crucially that makes the question **answerable
+at 10^5 parameters on two cores**, where the old one never could be.
+
+**Structural decision: KS is no longer a blocker.** A coupled map lattice gives a spatially
+extended chaotic system with no integrator at all (explicit map, cannot diverge) and an
+analytic tridiagonal Jacobian, so the full Lyapunov spectrum is exact rather than estimated —
+better ground truth than `dysts` on the axis we were missing. KS becomes an optional
+credibility upgrade. Substrate ladder: dysts (done) → ECA (exact structural label) → CML
+(spatially extended) → KS (if validated).
+
+**Where NCA fits.** As the instrument for the one lever never measured: how much of a
+surrogate's advantage is built-in structure rather than capacity. Weight-shared local rule vs
+dense MLP vs lookup, on identical data. Its parameter count is independent of grid size, which
+is the feasibility unlock. It also carries a published fix (pool + damage training) for exactly
+the failure R9 found — degradation past the training budget.
+
+**Risks named in advance.** Lorenz 1969 already argued that analogues are rare in high
+dimensions; a targeted literature check is task 0, not an afterthought. Zhang & Gilpin
+published the parroting tie; our claim must be the regime law, not the tie. Three days to the
+stated deadline.
+
+**Next.** Awaiting a decision on the plan in `background/06`, task 0 (literature check) and
+task 1 (controlled coverage experiment) first. No long compute started.
