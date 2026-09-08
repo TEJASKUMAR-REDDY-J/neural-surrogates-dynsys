@@ -28,6 +28,7 @@ informative).
 | **R8** | 63 small steps, or one big jump? | **Small steps win** on 5 of 6 systems. |
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
 | **R9** | If the first answer is wrong, can more passes fix it? | **For about 3 passes, then it gets worse.** Pass 2 beats pass 1 in 21/24 cases, the best pass is always within the 4 it was trained for (24/24), and it *never* kept improving to pass 16 (0/24). On 7/24 cases pass 16 is >10% worse than the best - one case 291% worse. Still loses to plain stepping by 20x at short horizons. |
+| **N3** | The predictor question on the whole library (108 systems). | **Holds and strengthens.** ~**32%** predictable (up from 27%), spectral entropy best single predictor at 0.250. Copying still ties: **46/108**, median ratio **1.00**. Corrects R3b - λ is not anti-predictive, just uninformative (+0.03). |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
@@ -406,8 +407,12 @@ from two cheap statistics: spectral entropy and correlation dimension.**
 
 Three things follow.
 
-1. **The Lyapunov exponent is not weakly predictive — it is anti-predictive.** −0.146. Using it
-   is worse than not using it. That sharpens Gilpin's "decorrelates" into something stronger.
+1. **The Lyapunov exponent scores −0.146** — apparently worse than not using it at all.
+
+   > **Corrected by N3.** On 108 systems this becomes **+0.032**. The negative value was a
+   > small-sample artefact of our own. The honest statement is that the Lyapunov exponent
+   > carries essentially *no* information about surrogate skill, not that it is actively
+   > harmful. Left visible rather than edited away.
 2. **The predictors that work are not the ones anyone would have picked.** Not chaoticity, not
    ordinal disorder — but how concentrated the frequency spectrum is, plus attractor geometry.
 3. **The kill criterion does not fire.** 27% is far short of 85%, so roughly **three quarters of
@@ -908,6 +913,76 @@ somewhere genuinely new — and three times the data says it was chance.
 
 The general lesson, and the reason the replication was queued before we knew the answer: a
 correlation from six points is a hypothesis, not a finding.
+
+---
+
+## N3 — the predictor question on the whole library
+
+**In one sentence:** at 3.6× the systems, the finding holds and gets stronger — about **32%**
+of surrogate skill is predictable from training-free statistics, spectral entropy is the single
+best one, and the trained network still only ties with copying.
+
+R3b used 30 systems. This uses **108** — every system in the library with no clock coordinate.
+Same protocol, 3 seeds each.
+
+### The numbers, side by side
+
+Leave-one-out R² — "would this predict a system it has never seen?" Rank-transformed.
+
+| predictor | R3b, 30 systems | **N3, 108 systems** |
+|---|---|---|
+| weighted permutation entropy | −0.146 | −0.025 |
+| largest Lyapunov exponent | −0.146 | **+0.032** |
+| Kaplan–Yorke dimension | −0.063 | −0.041 |
+| our correlation dimension | −0.029 | −0.021 |
+| 0-1 chaos test | 0.099 | 0.188 |
+| **spectral entropy** | 0.150 | **0.250** |
+| all features together | 0.061 | **0.300** |
+| spectral entropy + correlation dimension | 0.266 | 0.304 |
+| **+ Lyapunov exponent as well** | — | **0.321** |
+
+### Three things changed, and one of them is a correction to us
+
+**1. Spectral entropy is confirmed and strengthened** — 0.150 → 0.250. It is robustly the best
+single training-free predictor of how well a surrogate will do. Not chaoticity. Not disorder.
+**How concentrated the system's frequency spectrum is.**
+
+**2. The multi-feature fit now actually generalises** — 0.061 → 0.300. In R3b, six predictors on
+thirty systems overfitted so badly that combining them was worse than using one. With 108
+systems that problem largely goes away, and combination finally pays.
+
+**3. We were wrong about the Lyapunov exponent being harmful.** R3b reported −0.146 and we
+described it as "anti-predictive — using it is worse than ignoring it". On 108 systems it is
+**+0.032**. That negative number was our own small-sample noise.
+
+The corrected claim is weaker and duller: **the Lyapunov exponent carries essentially no
+information about surrogate skill on its own.** It does add a little on top of the others — the
+best combination we found is Lyapunov + spectral entropy + correlation dimension at 0.321.
+
+This is the second time a striking number of ours shrank when we added data. Both times the
+direction was the same: **small samples flatter interesting conclusions.**
+
+### The ceiling on cheap prediction
+
+**About 32%.** That is the best any combination of training-free statistics achieved at
+predicting surrogate skill across 108 systems, measured honestly on held-out systems.
+
+So roughly **two thirds of the variation remains unexplained** by anything cheap we tried. The
+pre-registered kill criterion was 85%. It does not fire, at more than three times the sample
+size. That is now a well-supported green light rather than a hopeful one.
+
+### And copying still ties, at 3.6× the scale
+
+| | R3b (30) | **N3 (108)** |
+|---|---|---|
+| trained model beats copying | 12 / 30 | **46 / 108** |
+| median skill ratio | 1.00 | **1.00** |
+| copying wins by more than 2× | 7 | 11 |
+| model wins by more than 2× | 5 | 10 |
+
+Exactly the same picture, four times the evidence. **A trained neural surrogate is, on median,
+precisely as good as finding the most similar moment in the past and copying what happened
+next.** This is now one of the best-supported results in the battery.
 
 ---
 
