@@ -27,6 +27,7 @@ informative).
 | **R4c** | Does that hold on more systems? | **The horizon effect holds** (18/18 systems at h=1, median 0.94 → 0.24 by h=500). **The explanation does not.** Attractor dimension −0.22, λ +0.19 — both noise. The −0.71 was six systems getting lucky. |
 | **R8** | 63 small steps, or one big jump? | **Small steps win** on 5 of 6 systems. |
 | **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
+| **R9** | If the first answer is wrong, can more passes fix it? | **For about 3 passes, then it gets worse.** Pass 2 beats pass 1 in 21/24 cases, the best pass is always within the 4 it was trained for (24/24), and it *never* kept improving to pass 16 (0/24). On 7/24 cases pass 16 is >10% worse than the best - one case 291% worse. Still loses to plain stepping by 20x at short horizons. |
 | **R6** | Does a bigger model get the *shape* right, or just the next step? | **Just the next step.** Capacity improves one-step accuracy strongly (+0.84) and long-horizon, spectrum and attractor shape **not at all** (+0.06, +0.10, +0.16). "More accurate" and "understands it better" are different claims. |
 | **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
 | **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
@@ -907,6 +908,113 @@ somewhere genuinely new — and three times the data says it was chance.
 
 The general lesson, and the reason the replication was queued before we knew the answer: a
 correlation from six points is a hypothesis, not a finding.
+
+---
+
+## R9 — If the first answer is wrong, can the model fix it by thinking again?
+
+**In one sentence:** yes, for about three passes — then it reliably gets *worse*, and it never
+once kept improving past the number of passes it was trained with.
+
+### What we built
+
+Instead of answering in one shot, the network produces a draft, looks at the draft, and
+revises. One network takes *(where the system is now, how far ahead, current guess)* and
+proposes a correction. The first guess is "nothing changes". Then it runs on its own output,
+and again.
+
+Training penalises **every** pass, not just the last — otherwise the network is free to make
+the intermediate passes meaningless and only get the final one right, which would answer a
+different question.
+
+Trained with **4** passes. Evaluated with **16** — four times more than it ever saw, because
+that is where a genuinely stable method and a merely lucky one come apart.
+
+This is also a fair rematch for R8: direct prediction lost badly to step-by-step rollout, but
+it only got *one* pass while rollout got 64.
+
+### Answer 1: yes, thinking again helps
+
+**Pass 2 beat pass 1 in 21 of 24 cases.** Median improvement: 0.016. On the short horizons the
+gains are large — Lorenz at h=8 goes 0.699 → 0.417 → 0.291, more than halving the error by the
+third pass.
+
+### Answer 2: the gains stop at roughly where training stopped
+
+| | |
+|---|---|
+| median best pass | **3** |
+| cases where the best pass was within the 4 it was trained for | **24 of 24** |
+| cases where it kept improving all the way to pass 16 | **0 of 24** |
+
+**Not once** did extra thinking beyond the training budget help. Whatever the network learned,
+it learned to do it in about three steps, and running it longer does not extend the benefit.
+
+### Answer 3: yes, it can absolutely get worse
+
+This was the real question, and the answer is unambiguous.
+
+| | |
+|---|---|
+| error at pass 16 ÷ error at the best pass, median | **1.024** |
+| cases where pass 16 was more than 10% worse than the best | **7 of 24** |
+
+And some of those are dramatic. Error by pass:
+
+```
+HenonHeiles, h=32:  0.924  0.359  0.220  0.219 | 0.364  0.525  0.782  0.856
+                      p1     p2     p3     p4      p6     p8    p12    p16
+                                          best              ...291% worse
+
+Rossler, h=32:      1.020  0.651  0.430  0.375 | 0.726  0.958  1.037  1.106
+                                          best              ...195% worse
+```
+
+Both improve beautifully for four passes, then turn around and end up worse than where they
+started. That is a **fixed-point iteration running past its stable region**, which is exactly
+the failure mode we designed the test to expose.
+
+### So how many passes should you use?
+
+**Whatever you trained with, and not more.** The number of passes is a hyperparameter with a
+real optimum, and "let it think longer" is not free — on a third of the cases here it actively
+destroys the answer.
+
+That connects to something in the literature. The published audit of TRM found its recursion
+saturates almost immediately, with most of the accuracy arriving at the very first step. We
+see the same shape from the other direction: the benefit is real, it is small, and it is
+bounded by training.
+
+### But refinement still loses to plain stepping
+
+At short horizons it is not close:
+
+| Lorenz, h=8 | error |
+|---|---|
+| step-by-step rollout | **0.014** |
+| refinement, best pass | 0.278 |
+| single-pass direct | 0.469 |
+
+Rollout is **20× better**. On HenonHeiles at h=8 it is 40× better. Refinement improves on
+single-pass direct prediction — which is a real finding — but it does not close the gap to
+stepping.
+
+### Where refinement does win: it fails safely
+
+At long horizons the picture flips, for the same reason we saw in R8b:
+
+| Rossler, h=256 | error |
+|---|---|
+| step-by-step rollout | **14.79** |
+| refinement | **0.98** |
+| copying | 0.75 |
+
+Rollout has exploded. Refinement has settled onto "no better than the average" and stopped
+there. Neither is forecasting, but one of them is not producing garbage.
+
+So the honest summary of the mechanism: **iterative refinement is a modest, bounded improvement
+over single-pass prediction, with a real risk of over-iterating, and it does not rescue direct
+prediction from losing to plain step-by-step rollout.**
 
 ---
 

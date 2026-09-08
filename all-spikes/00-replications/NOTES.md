@@ -95,3 +95,39 @@ offers a bound, not an explanation. A direct horizon-conditioned model does not 
 So if the direct model escapes the failure, the cause was compounding; if it fails equally, the
 cause is a system ceiling. That is the Gilpin-vs-Duraisamy dispute, separated for 20 minutes of
 compute. It should probably be promoted ahead of R5.
+
+## 2026-09-08 — R9 done; Kuramoto-Sivashinsky attempted and blocked
+
+**R9 (iterative refinement) complete.** 1,152 rows, 6 systems, 4 horizons, 16 evaluated passes,
+3 seeds. Answers in RESULTS.md. Short version: pass 2 beats pass 1 in 21/24 cases, the best
+pass is always inside the 4 it was trained with (24/24), it never kept improving to pass 16
+(0/24), and on 7/24 cases pass 16 is more than 10% worse than the best - one case 291% worse.
+Refinement improves on single-pass direct prediction but still loses to plain rollout by 20x at
+short horizons, while failing more gracefully than rollout at long ones.
+
+**Kuramoto-Sivashinsky: attempted, not working, deliberately not shipped.**
+
+N1 was the highest-value planned addition - a spatially extended system to bridge to the
+neural-operator literature. Implemented ETDRK4 (Kassam & Trefethen) pseudospectrally. It runs
+and produces correct-looking chaotic dynamics over short integrations, then destabilises.
+
+What was tried, in order:
+- initial condition scaled to the domain (the textbook one is written for length 32*pi and is
+  nearly constant on a length-22 domain) - fixed a genuine bug, did not fix the instability
+- 2/3 dealiasing on the nonlinear term - standard, applied, did not fix it
+- step sizes 0.25, 0.1, 0.05, 0.025 - only 0.025 survives 11k steps, and even that diverges by
+  ~42k
+- zeroing the Nyquist mode in the derivative operator, as the published code does - no effect
+- pinning the mean mode to zero (it is undamped, so roundoff accumulates there) - no effect
+- the canonical parameters themselves (L=32*pi, N=128, dt=0.25) - also diverges on long runs,
+  which is the tell: this is a bug in our implementation, not a parameter choice, because those
+  settings are published as stable
+
+Conclusion: the scheme is right on paper and something in the implementation is wrong in a way
+that only shows over long integrations. The right fix is to check against a validated reference
+implementation rather than keep guessing, so KS is parked rather than shipped half-working.
+Nothing that depends on it has been claimed.
+
+**What ran instead.** The other four planned items, all of which use already-validated code:
+R2 extended to every usable system (the predictor features N3 needs), N3 at full scale, N5 the
+batch-size sweep with seeds, N2 observational noise at three levels.

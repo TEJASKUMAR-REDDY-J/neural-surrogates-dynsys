@@ -1,0 +1,20 @@
+{"record": "manifest", "run_id": "r3_wpe_vs_error__20260908T0652__54d727", "experiment": "r3_wpe_vs_error", "started_utc": "2026-09-08T06:52:01Z", "git_sha": "a953de5", "git_dirty": true, "config_path": "cli", "config_hash": "sha256:54d72786931916919c9ffeb11f5c1baa390d6cff8e7ae35e613e527fb5ca6f26", "config": {"n_systems": 108, "budget": 10000, "n_train": 8000, "n_test": 4000, "epochs": 200, "seeds": [0, 1, 2], "steps": 200, "n_points": 20000, "bounded_only": true, "shard": 0, "n_shards": 2}, "seed": null, "env": {"python": "3.12.7", "numpy": "1.26.4", "scipy": "1.12.0", "torch": "2.8.0+cpu", "threads": 1, "cuda": false}}
+{"record": "note", "message": "systems", "n": 17, "systems": ["CoevolvingPredatorPrey", "AtmosphericRegime", "HenonHeiles", "Bouali2", "AnishchenkoAstakhov", "Blasius", "Coullet", "Arneodo", "Colpitts", "Dadras", "Hopfield", "Halvorsen", "DequanLi", "HyperBao", "HyperCai", "BurkeShaw", "BelousovZhabotinsky"]}
+{"record": "failure", "system": "CoevolvingPredatorPrey", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "AtmosphericRegime", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "HenonHeiles", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Bouali2", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "AnishchenkoAstakhov", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Blasius", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Coullet", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Arneodo", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Colpitts", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Dadras", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Hopfield", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Halvorsen", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "DequanLi", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "HyperBao", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "HyperCai", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "BurkeShaw", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "BelousovZhabotinsky", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "summary", "n_units": 0, "failed": 17, "wall_s": 0.6, "finished_utc": "2026-09-08T06:52:02Z"}

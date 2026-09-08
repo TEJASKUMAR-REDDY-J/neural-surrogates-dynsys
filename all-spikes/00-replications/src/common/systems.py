@@ -300,6 +300,107 @@ def one_step_dataset(
     }
 
 
+# --------------------------------------------------------------------------------------
+# spatially extended systems
+#
+# Everything above is a handful of variables. The neural-operator literature we are arguing
+# with - REALM, Shikhman, the reservoir-computing work - is about systems that are a *field*
+# spread over space, with tens to millions of variables. Kuramoto-Sivashinsky is the standard
+# cheap bridge: genuinely chaotic, a real PDE, and small enough for a CPU at 64 grid points.
+# --------------------------------------------------------------------------------------
+
+# Largest Lyapunov exponent for KS at domain length 22, from the literature (Edson et al.
+# 2019 give 0.043 for L=22). Used only to report horizons in Lyapunov times.
+KS_LYAP = {22.0: 0.043, 60.0: 0.089}
+
+
+def kuramoto_sivashinsky(
+    n_steps: int, n_grid: int = 64, L: float = 22.0, dt: float = 0.025,
+    burn_in: int = 4000, seed: int = 0, stride: int = 8,
+) -> np.ndarray:
+    """Integrate u_t = -u u_x - u_xx - u_xxxx on a periodic domain, spectrally.
+
+    Uses ETDRK4 (Kassam & Trefethen), the standard scheme for this equation: the stiff
+    linear part is handled exactly in Fourier space and only the nonlinear part is stepped.
+
+    Two departures from the textbook settings, both forced by the integration blowing up.
+    The published example uses domain length 32*pi with dt=0.25; on a domain of length 22
+    the same grid resolves much higher wavenumbers (k_max 9.1 against 4.0, so k^4 is 27x
+    larger) and the nonlinear stability limit tightens sharply. Measured here: dt of 0.25,
+    0.1 and 0.05 all diverge, 0.025 is stable over 25,000 steps. Zeroing the Nyquist mode
+    in the derivative operator, as the published code does, does not rescue the larger
+    steps - it is a genuine nonlinear limit, not that detail. We also apply the standard
+    2/3 dealiasing rule.
+
+    Integrating finely and recording every `stride`-th step keeps the integration stable
+    while giving the surrogate a coarse enough sampling to be worth predicting - the same
+    split between integration step and sampling step used for the ODE systems.
+    """
+    rng = np.random.default_rng(seed)
+    x = L * np.arange(n_grid) / n_grid
+    # The textbook initial condition cos(x/16)(1+sin(x/16)) is written for a domain of
+    # length 32*pi. Used unchanged on a shorter domain it is nearly constant, and the
+    # resulting transient blows the integration up. Scale it to the domain instead.
+    phase = 2 * np.pi * x / L
+    u = np.cos(phase) * (1 + np.sin(phase)) + 0.01 * rng.standard_normal(n_grid)
+    v = np.fft.fft(u)
+
+    k = 2 * np.pi * np.fft.fftfreq(n_grid, d=L / n_grid)
+    Lop = k**2 - k**4                      # linear operator in Fourier space
+    E, E2 = np.exp(dt * Lop), np.exp(dt * Lop / 2)
+
+    # contour integral for the ETDRK4 coefficients, which are numerically delicate otherwise
+    M = 32
+    r = np.exp(1j * np.pi * (np.arange(1, M + 1) - 0.5) / M)
+    LR = dt * Lop[:, None] + r[None, :]
+    Q = dt * np.real(np.mean((np.exp(LR / 2) - 1) / LR, axis=1))
+    f1 = dt * np.real(np.mean((-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3, axis=1))
+    f2 = dt * np.real(np.mean((2 + LR + np.exp(LR) * (-2 + LR)) / LR**3, axis=1))
+    f3 = dt * np.real(np.mean((-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3, axis=1))
+
+    g = -0.5j * k
+    # 2/3 dealiasing: the quadratic nonlinearity puts energy above the resolved band, and
+    # without this it folds back onto low modes and drives an instability.
+    keep = np.abs(k) < (2.0 / 3.0) * np.abs(k).max()
+
+    def nonlin(vh):
+        return g * keep * np.fft.fft(np.real(np.fft.ifft(vh)) ** 2)
+
+    out = np.empty((n_steps, n_grid))
+    total = burn_in + n_steps * stride
+    for i in range(total):
+        Nv = nonlin(v)
+        a = E2 * v + Q * Nv
+        Na = nonlin(a)
+        b = E2 * v + Q * Na
+        Nb = nonlin(b)
+        c = E2 * a + Q * (2 * Nb - Nv)
+        Nc = nonlin(c)
+        v = E * v + Nv * f1 + 2 * (Na + Nb) * f2 + Nc * f3
+        if i >= burn_in and (i - burn_in) % stride == 0:
+            j = (i - burn_in) // stride
+            if j < n_steps:
+                out[j] = np.real(np.fft.ifft(v))
+    if not np.all(np.isfinite(out)):
+        raise RuntimeError("KS integration diverged")
+    return out
+
+
+def ks_spec(n_grid: int = 64, L: float = 22.0, dt: float = 0.025, stride: int = 8) -> SystemSpec:
+    lam = KS_LYAP.get(float(L), 0.043)
+    spec = SystemSpec(
+        name=f"KuramotoSivashinsky_L{int(L)}_N{n_grid}",
+        dim=n_grid, period=1.0, lyap_max=lam, is_map=True,
+        invariants={"lyap_max": lam, "kaplan_yorke_dim": float("nan"),
+                    "correlation_dim_pub": float("nan"), "multiscale_entropy": float("nan"),
+                    "period": 1.0, "dim": n_grid, "domain_length": L, "dt": dt,
+                    "stride": stride},
+    )
+    # is_map makes dt 1.0 per step; the real Lyapunov time per step is lam * dt
+    spec.lyap_max = lam * dt * stride  # one recorded step is `stride` integration steps
+    return spec
+
+
 def demo() -> None:
     """Self-check: alignment, caching, dataset shapes, and the standard map's chaos knob."""
     # standard map: below K~1 mostly regular, well above it strongly chaotic
@@ -331,10 +432,20 @@ def demo() -> None:
     assert ds["X_test"].shape == (500, 3)
     assert abs(ds["X_train"].mean()) < 0.05
 
+    # Kuramoto-Sivashinsky: chaotic PDE, must stay bounded and lose memory
+    ks = kuramoto_sivashinsky(1500, n_grid=64)
+    assert ks.shape == (1500, 64) and np.all(np.isfinite(ks))
+    assert 0.5 < ks.std() < 10.0, ks.std()
+    c0 = np.corrcoef(ks[:-200, 0], ks[200:, 0])[0, 1]
+    assert abs(c0) < 0.4, f"KS should decorrelate over 200 steps, got {c0:.2f}"
+    kspec = ks_spec()
+    assert kspec.dim == 64
+
     print(
         f"systems ok - standard map lambda(K=0.3)={lam_low:.3f} lambda(K=6)={lam_high:.3f} | "
         f"Lorenz dim={spec.dim} lambda={spec.lyap_max:.3f} dt={spec.dt:.4f} "
-        f"lyap/step={spec.lyap_time_per_step:.4f} peak~{peak_period:.0f} samples"
+        f"lyap/step={spec.lyap_time_per_step:.4f} peak~{peak_period:.0f} samples | "
+        f"KS 64-dim std={ks.std():.2f} lag-200 corr={c0:+.2f}"
     )
 
 

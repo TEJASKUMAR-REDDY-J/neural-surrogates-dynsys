@@ -107,6 +107,12 @@ def main() -> None:
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--n-points", type=int, default=20_000)
     ap.add_argument(
+        "--noise", type=float, default=0.0,
+        help="observational noise added to the trajectory, as a fraction of each "
+             "coordinate's standard deviation. Everything else here assumes perfect "
+             "measurement, which no real application has.",
+    )
+    ap.add_argument(
         "--bounded-only", action="store_true",
         help="drop systems carrying an unbounded clock coordinate; see the note in "
              "systems.load_spec for why they corrupt cross-system regressions",
@@ -126,6 +132,9 @@ def main() -> None:
             try:
                 spec = S.load_spec(name)
                 X = S.trajectory(name, n=args.n_points, use_cache=True)
+                if args.noise > 0:
+                    rng = np.random.default_rng(12345)
+                    X = X + args.noise * X.std(0) * rng.standard_normal(X.shape)
                 ds = S.one_step_dataset(X, n_train=args.n_train, n_test=args.n_test)
                 base = baseline_scores(ds, spec, args.steps, 64, seed=0)
             except Exception as e:  # noqa: BLE001
@@ -149,6 +158,7 @@ def main() -> None:
                         "n_params": info["n_params"], "n_train": args.n_train,
                         "final_train_loss": info["final_train_loss"],
                         "lyap_max": spec.lyap_max, "dim": spec.dim,
+                        "noise": args.noise,
                         "lyap_time_per_step": spec.lyap_time_per_step,
                         **{k: v for k, v in ev.items() if k != "err_by_step"},
                         **base,
@@ -172,7 +182,8 @@ def main() -> None:
                 )
 
     keys = sorted({k for r in rows for k in r})
-    with (RESULTS / (f"surrogate_vs_statistics" + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
+    with (RESULTS / (f"surrogate_vs_statistics" + (f"__noise{args.noise:g}" if args.noise > 0 else "")
+                 + (f"__shard{args.shard}" if args.n_shards > 1 else "") + ".csv")).open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(rows)

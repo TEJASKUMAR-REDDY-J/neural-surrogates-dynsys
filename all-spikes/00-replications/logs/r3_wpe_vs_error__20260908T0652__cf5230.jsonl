@@ -1,0 +1,19 @@
+{"record": "manifest", "run_id": "r3_wpe_vs_error__20260908T0652__cf5230", "experiment": "r3_wpe_vs_error", "started_utc": "2026-09-08T06:52:01Z", "git_sha": "a953de5", "git_dirty": true, "config_path": "cli", "config_hash": "sha256:cf52306545044701b843ff5d6f257adf28e55c933264aa2f5429c10707aa9cc5", "config": {"n_systems": 108, "budget": 10000, "n_train": 8000, "n_test": 4000, "epochs": 200, "seeds": [0, 1, 2], "steps": 200, "n_points": 20000, "bounded_only": true, "shard": 1, "n_shards": 2}, "seed": null, "env": {"python": "3.12.7", "numpy": "1.26.4", "scipy": "1.12.0", "torch": "2.8.0+cpu", "threads": 1, "cuda": false}}
+{"record": "note", "message": "systems", "n": 16, "systems": ["CellCycle", "GlycolyticOscillation", "BeerRNN", "Finance", "GenesioTesi", "Aizawa", "ChenLee", "Hadley", "HyperJha", "CaTwoPlusQuasiperiodic", "CaTwoPlus", "ExcitableCell", "GuckenheimerHolmes", "Chua", "Chen", "CellularNeuralNetwork"]}
+{"record": "failure", "system": "CellCycle", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "GlycolyticOscillation", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "BeerRNN", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Finance", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "GenesioTesi", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Aizawa", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "ChenLee", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Hadley", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "HyperJha", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "CaTwoPlusQuasiperiodic", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "CaTwoPlus", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "ExcitableCell", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "GuckenheimerHolmes", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Chua", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "Chen", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "failure", "system": "CellularNeuralNetwork", "stage": "setup", "error": "AttributeError: 'Namespace' object has no attribute 'noise'"}
+{"record": "summary", "n_units": 0, "failed": 16, "wall_s": 0.6, "finished_utc": "2026-09-08T06:52:02Z"}
