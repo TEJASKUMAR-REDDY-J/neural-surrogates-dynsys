@@ -7,7 +7,9 @@ of it.
 Plan and hypotheses: [PLAN.md](PLAN.md). Raw numbers: `results/`. Figures:
 `results/analysis/`. Run logs: `logs/`.
 
-**Status:** R0, R2, R3 and R8 done. R4 running. R5, R1 and two follow-up runs queued.
+**Status:** everything done except R4c, the last confirmation run. R5 is written up from its
+data; R1's final block-size-6 tier was deliberately stopped (see R1 for why it could not have
+been informative).
 
 ---
 
@@ -15,17 +17,31 @@ Plan and hypotheses: [PLAN.md](PLAN.md). Raw numbers: `results/`. Figures:
 
 | | What we asked | What we found |
 |---|---|---|
-| **R0** | Can this laptop run any of this? | Yes. 124 of 129 systems work. Our cost estimates were 14× too optimistic and got fixed. |
-| **R2** | Are the ways of measuring "complexity" all secretly the same number? | **No** — about 5–6 genuinely independent ones. Good news: there is something to predict. |
-| **R2b** | *(unplanned)* Are those measurements even trustworthy? | **Not as normally computed.** A standard setup made 40 of 45 chaotic systems look non-chaotic. |
-| **R3** | Does a cheap statistic already predict how well a network will do? | Looked like a yes (R²=0.59). **It was a mirage.** Fix the data flaw and it drops to 0.002. |
-| **R8** | Is it better to take 63 small steps or one big jump? | **Small steps win**, on 5 of 6 systems. But our test was too short to be the real test — rerunning. |
-| **R4** | Does a model stop improving no matter how big you make it? | *Running.* This is the crux. |
-| **R5** | Does more chaos really need a *smaller* model? | *Queued.* |
-| **R1** | Is "this system has a simple summary" a real property? | *Queued.* Code already reproduces two published results exactly. |
+| **R0** | Can this laptop run any of this? | Yes. 124 of 129 systems work. Our own cost estimates were 14× too optimistic; fixed. |
+| **R2** | Are the ways of measuring "complexity" all secretly the same number? | **No** — about 5–6 genuinely independent ones. So there *is* something to predict. |
+| **R2b** | *(unplanned)* Are those measurements even trustworthy? | **Not as normally computed.** A standard setup made 40 of 45 chaotic systems look calm, and the fix *reorders* systems rather than shifting them. |
+| **R3** | Does a cheap statistic already predict how well a network will do? | Looked like yes (R² 0.59). **A mirage** — 7 systems with a clock coordinate. Clean systems: **0.0001**. |
+| **R3b** | Asked again, honestly. | **~27%** is genuinely predictable — from spectral entropy + correlation dimension. The Lyapunov exponent is **anti**-predictive (−0.146). And a trained net ties with plain copying, **median ratio 1.00**. |
+| **R4** | Does a model stop improving however big you make it? | First pass **could not answer** — we made the task too easy and the ruler too short. Both fixed. |
+| **R4b** | The crux, properly configured. | Capacity helps hugely at short horizons, **not at all** at long ones. Where it stops varies **450×** between systems, and λ does not explain it. **This may reconcile the three papers that disagree.** |
+| **R8** | 63 small steps, or one big jump? | **Small steps win** on 5 of 6 systems. |
+| **R8b** | With a long enough ruler and a fair fight. | One big jump fails **earlier**, so the long-horizon wall is an **information limit**, not errors piling up. On the 2 calmest systems, **copying beat both networks**. |
+| **R5** | Does more chaos need a *smaller* model? | **No.** Does not reproduce at any of 6 tolerances on either of 2 map families — more chaos is simply harder. And our seed-to-seed noise (12.7%) is enough to have produced the published 47% effect by accident. |
+| **R1** | Is "this system has a simple summary" a real property? | Yes where we could check every possibility (202/256 exactly, sampled or exhaustive). Past block size 4 brute force covers **1 part in 10¹⁴** and tells us nothing — which is why the published work needed a cleverer algorithm, not a bigger computer. |
+| **R4c** | Does λ explain the 450× spread, on more systems? | *Running* — 14 systems spanning a 200× range in λ. |
 
-Two of these — R2b and R3 — are results we did not plan for. Both came from noticing that a
-number looked wrong and chasing it. That is what this battery is for.
+### The four results we did not plan for
+
+Every one came from noticing a number looked wrong and chasing it. That is what a calibration
+battery is *for*.
+
+1. **R2b** — the complexity statistics were measuring our sampling rate, not the systems.
+2. **R3** — our most exciting result was an artefact of seven systems carrying a clock.
+3. **R4** — the crux experiment was saturated at both ends and could not answer its question.
+4. **R1** — our search-effort conclusion only held where the search was exhaustive; we had
+   overstated it and corrected it.
+
+Three of the four would have become confident published claims if we had skipped this pass.
 
 ---
 
@@ -777,10 +793,84 @@ reporting rather than hiding.
 
 ## R5 — Does more chaos really need a *smaller* model?
 
-*Queued.* Smoke test hint (not conclusive): at low chaos the map needed ~400 parameters to
-hit 1% error; at high chaos, 3,235 parameters still only reached 3.5%. That is the *opposite*
-of the published claim. Also: run-to-run variation was already 4.9%, enough to move the
-answer by a full model size — which is the fragility we are testing for.
+**In one sentence:** no. The published claim does **not** reproduce at any of six tolerances on
+either of two map families — more chaos is straightforwardly harder — and our run-to-run noise
+alone is big enough to have produced the published effect by accident.
+
+### The claim being tested
+
+A 2025 paper (NNPT) found something delightfully counterintuitive: as they made a system more
+chaotic, the network size needed to hit 1% accuracy went *up*, peaked in the middle, then fell
+by **47%** in the fully chaotic regime. Their explanation: once fully chaotic, fine detail
+becomes effectively noise, and noise costs no capacity to represent.
+
+You flagged this as the interesting one, and you were right that their small models are an
+advantage for us rather than a limitation. But their evidence was thin: the 47% drop is a
+**single architectural step** (3 layers of 32 units down to 2 layers of 32), with **no seed
+count reported**, read at a **single** tolerance.
+
+### What we did
+
+The **Chirikov standard map** — chosen because NNPT noted their transition matched Chirikov's
+own resonance criterion, so this tests their claimed *mechanism* directly rather than by
+analogy. Plus the **Hénon map** as a second family, because one system family is what made the
+original fragile.
+
+Nine model sizes over a 250× range. **Five seeds at every point.** And required capacity read
+at **six** tolerances instead of one.
+
+### What happened
+
+One-step error, averaged over 5 seeds, standard map:
+
+| chaos knob K | 211 params | 827 | 3,235 | 12,755 | 51,062 |
+|---|---|---|---|---|---|
+| 0.4 | 0.0009 | 0.0005 | 0.0009 | 0.0004 | 0.0003 |
+| 0.97 | 0.0056 | 0.0034 | 0.0023 | 0.0015 | 0.0008 |
+| 2.0 | 0.0030 | 0.0012 | 0.0007 | 0.0005 | 0.0005 |
+| 5.0 | 0.0053 | 0.0026 | 0.0110 | 0.0010 | 0.0007 |
+| **8.0** | **0.6282** | **0.3731** | **0.3053** | **0.2694** | **0.2491** |
+
+The most chaotic setting is **dramatically harder**, not easier. At K=8 the error is two
+hundred times worse than at K=0.4, and a 250× capacity increase only improves it 2.5× — never
+even reaching 5%. That is the opposite of the reported direction.
+
+Formally: **non-monotone at 0 of 6 tolerances, on both map families.** The claim does not
+reproduce.
+
+### Two honest complications
+
+**1. Our "required capacity" measure was degenerate, so we report error instead.** For nearly
+every knob setting, the *smallest* model (211 parameters) already hit even the strictest 0.5%
+tolerance. So "smallest model that crosses the threshold" was 211 almost everywhere and
+carried no information. The error-at-fixed-capacity table above is the honest view of the same
+data. Same lesson as R4's first pass: our task was too easy, and we say so rather than
+reporting a flat line as a finding.
+
+**2. The Hénon map has periodic windows, which look like zero difficulty.** At a = 1.0, 1.24
+and 1.30 the error is *exactly* 0.0000 — the attractor there is periodic, not chaotic, so
+prediction is trivial. Those are real features of the parameter space, not bugs, but they mean
+"turn the chaos dial smoothly" is not something the Hénon map actually does.
+
+**3. The standard map's chaos is not summarised by one number.** Our Lyapunov estimate reads
+0.00 for every K up to 3.0, then 0.40 at K=5 and 1.40 at K=8. That is not an estimator bug:
+the standard map has **mixed phase space**, with regular islands surviving among chaotic seas,
+so a trajectory started at random may sit in an island and never diverge. "How chaotic is
+this system" is genuinely ill-defined here — worth knowing before using λ as a knob label
+anywhere.
+
+### The methodological point, which is the real result
+
+**Our run-to-run variation, from the random seed alone, was 12.7%.**
+
+NNPT read a 47% capacity difference off two adjacent architecture steps with no seeds reported.
+Two adjacent steps on our ladder differ by roughly a factor of 2 in parameters. A 12.7%
+coefficient of variation in the error is comfortably enough to move which step first crosses a
+threshold — and therefore to manufacture a 47% "capacity drop" out of nothing.
+
+We are not saying their effect is noise. We are saying **the published evidence cannot
+distinguish it from noise**, and that our attempt to reproduce it at higher resolution, with
+seeds, at six tolerances and on two families, found nothing.
 
 ## R1 — Is "this system has a simple summary" a real property?
 
