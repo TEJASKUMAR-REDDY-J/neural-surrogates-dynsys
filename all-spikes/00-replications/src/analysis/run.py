@@ -252,6 +252,17 @@ def analyse_r4() -> dict:
     rows = read_csv(RES / "r4" / "capacity_data_sweep.csv")
     if not rows:
         return {}
+    # Guard against mixing configurations. R4 was rerun at a coarser sampling density, and a
+    # stale shard file from the first pass sat in the same directory - silently averaging the
+    # two would have been undetectable in the output. Keep only the most common setting.
+    ppp = [r.get("pts_per_period") for r in rows]
+    if len(set(ppp)) > 1:
+        from collections import Counter
+        keep = Counter(ppp).most_common(1)[0][0]
+        dropped = len(rows) - sum(v == keep for v in ppp)
+        rows = [r for r in rows if r.get("pts_per_period") == keep]
+        print(f"  [r4] mixed sampling densities found; kept pts_per_period={keep}, "
+              f"dropped {dropped} rows")
     out: dict = {"per_system": []}
     for s in sorted({r["system"] for r in rows}):
         sub = [r for r in rows if r["system"] == s]
@@ -279,6 +290,32 @@ def analyse_r4() -> dict:
         fit_p = fit_scaling(pc, pe) if len(pc) >= 4 else {"ok": False}
         fit_d = fit_scaling(dc, de) if len(dc) >= 4 else {"ok": False}
 
+        # Fit several targets, not just one-step error. Short-horizon and long-horizon skill
+        # can saturate at different capacities - on HyperCai one-step error kept improving
+        # while error at 200 steps sat at "no better than the mean" - so reporting a single
+        # exponent would hide the thing we care about.
+        targets = {}
+        for tname, tkey in (("err_h1", "err_h1"), ("err_h50", "err_h50"),
+                            ("err_h200", "err_h200"), ("inv_vpt", "vpt_steps")):
+            if tkey not in cap[0]:
+                continue
+            xs = sorted({r["n_params"] for r in cap})
+            ys = []
+            for x in xs:
+                vals = [r[tkey] for r in cap if r["n_params"] == x and np.isfinite(r[tkey])]
+                # drop diverged fits rather than letting one blow-up dominate the mean
+                vals = [v for v in vals if v < 1e3]
+                ys.append(float(np.median(vals)) if vals else np.nan)
+            y = np.array(ys, float)
+            if tname == "inv_vpt":
+                y = 1.0 / np.maximum(y, 1e-6)
+            f = fit_scaling(np.array(xs, float), y, n_boot=300)
+            targets[tname] = {
+                k: f.get(k) for k in
+                ("ok", "alpha", "L_inf", "L_inf_lo", "L_inf_hi", "floor_supported", "r2")
+            }
+        rec_targets = targets
+
         rec = {
             "system": s,
             "lyap_max": sub[0]["lyap_max"],
@@ -288,6 +325,13 @@ def analyse_r4() -> dict:
             "data_curve": {"n_train": dc.tolist(), "err": de.tolist(), "sd": dsd.tolist()},
             "capacity_fit": fit_p,
             "data_fit": fit_d,
+            "fits_by_target": rec_targets,
+            "diverged_frac_at_largest_data": float(
+                np.mean([bool(r["diverged"]) for r in cap])
+            ),
+            "blowup_frac_at_largest_data": float(
+                np.mean([(r.get("err_h1000") or 0) > 10 for r in cap])
+            ),
             "seed_sd_at_largest": float(psd[-1]) if len(psd) else float("nan"),
             "best_vpt_steps": float(np.max([r["vpt_steps"] for r in sub])),
             "diverged_frac": float(np.mean([bool(r["diverged"]) for r in sub])),

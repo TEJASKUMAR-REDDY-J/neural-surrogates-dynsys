@@ -496,6 +496,109 @@ main experiment, we would have concluded "error keeps falling, so there is no in
 ceiling" — and that conclusion would have been about our sampling rate, not about the
 systems.
 
+---
+
+## R4b — the crux, properly configured
+
+**In one sentence:** making the model bigger helps enormously at short horizons and **not at
+all** at long ones — and the horizon where it stops paying varies **450×** between systems,
+which the Lyapunov exponent does not explain.
+
+378 models across 6 systems spanning attractor dimension 2.0 to 16.5. Zero censoring this
+time: the 1,000-step ruler was long enough for every single fit.
+
+### The main result, as one table
+
+How much does a hundredfold increase in model size buy you, at each horizon? (The number is
+the improvement rate — 0 means extra capacity buys nothing.)
+
+| system | dimension | λ | h=1 | h=10 | h=50 | h=100 | h=200 | h=500 |
+|---|---|---|---|---|---|---|---|---|
+| Rossler | 2.01 | 0.15 | 0.64 | 0.40 | 0.31 | 0.26 | **0.09** | 0.01 |
+| Lorenz | 2.08 | 0.89 | 1.13 | 0.20 | 0.22 | 0.61 | **0.00** | 0.00 |
+| Thomas | 2.13 | 0.63 | 0.30 | **0.04** | 0.00 | 0.00 | 0.00 | 0.00 |
+| HyperCai | 3.14 | 1.68 | 0.98 | 0.24 | 0.45 | **0.09** | 0.02 | 0.02 |
+| HenonHeiles | 6.81 | 0.04 | 1.01 | 0.89 | 0.76 | 0.46 | 0.50 | **0.00** |
+| Bouali2 | 16.47 | 0.08 | **0.00** | 0.00 | 0.03 | 0.08 | 0.04 | — |
+
+Read left to right: every system starts with capacity helping and ends with it not helping.
+On Lorenz, going from 1,000 to 100,000 parameters improves one-step prediction a lot
+(rate 1.13) and improves 200-step prediction **by nothing at all** (rate 0.00, with a fitted
+floor at 1.19 whose confidence interval excludes zero — and 1.0 means "no better than
+guessing the average").
+
+**Bouali2 is the extreme case.** At attractor dimension 16.5, a hundredfold capacity increase
+buys nothing at *any* horizon, including the very first step:
+
+```
+params:  1,011   2,196   4,611   9,987  21,891  46,212  99,843
+h=1:    0.0088  0.0121  0.0149  0.0158  0.0142  0.0133  0.0093
+```
+
+### So is the ceiling just "chaos runs out"?
+
+That is the obvious explanation, and it is the one we had to rule out. Chaotic systems become
+unpredictable after a few Lyapunov times no matter what. If that were the whole story, then
+the point where capacity stops paying should land at **the same number of Lyapunov times on
+every system.**
+
+It doesn't:
+
+| system | dimension | λ | stops paying at | in Lyapunov times |
+|---|---|---|---|---|
+| Bouali2 | 16.47 | 0.08 | step 1 | **0.0** |
+| Thomas | 2.13 | 0.63 | step 10 | **1.6** |
+| HyperCai | 3.14 | 1.68 | step 100 | **5.1** |
+| HenonHeiles | 6.81 | 0.04 | step 500 | **5.7** |
+| Rossler | 2.01 | 0.15 | step 200 | **8.9** |
+| Lorenz | 2.08 | 0.89 | step 200 | **13.4** |
+
+**A 450× spread.** Lorenz keeps rewarding a bigger model for over thirteen Lyapunov times;
+Bouali2 stops rewarding it before the first step. These are not the same phenomenon with
+different clocks.
+
+And the Lyapunov exponent does not predict which is which:
+
+| predictor | correlation with where capacity stops paying |
+|---|---|
+| 1 / Lyapunov exponent | **0.14** — no relationship |
+| attractor dimension | **−0.71** — higher dimension, stops sooner |
+
+### What this means
+
+This looks like it **reconciles the three papers that disagree**:
+
+- **Gilpin** says scale and data are what limit us. True — at short horizons. Capacity
+  clearly helps there, on every system.
+- **Duraisamy** says there are intrinsic ceilings nothing recovers. Also true — at long
+  horizons. Capacity buys literally nothing, and the floor sits at "no better than guessing".
+- They disagree because **they were measuring at different horizons.**
+
+And the residual Gilpin found — the part not explained by the Lyapunov exponent — has a
+candidate name here: **attractor dimension**. That is also what scaling theory predicts,
+since the improvement rate should be governed by the intrinsic dimension of the data, not by
+how fast trajectories diverge.
+
+### What we are *not* claiming
+
+Honesty about the limits, because they are real:
+
+- **Six systems.** The dimension correlation of −0.71 with n=6 is **not statistically
+  significant** (p ≈ 0.11). It is suggestive, not established.
+- **The improvement-rate fits are noisy** where the curve is flat. Two entries in the table
+  above are obvious fit artefacts (Thomas 1.88 at h=1000, Bouali2 4.75 at h=500) and are
+  excluded from the reading, not explained away.
+- **We tested the exponent, not the ceiling's height.** "Capacity stops helping" is not the
+  same claim as "no architecture could ever do better."
+- **Up to 100,000 parameters only.** Saturation observed here does not prove saturation at a
+  billion.
+
+**Follow-up queued (R4c).** The same measurement on **14 systems** spanning a 200× range in
+Lyapunov exponent (0.011 to 2.325), which makes the "does λ explain it?" test properly
+powered. The dimension test will stay underpowered, because the catalogue simply does not
+contain many low-dimensional attractors above dimension 2.5 — and that limitation is worth
+reporting rather than hiding.
+
 ## R5 — Does more chaos really need a *smaller* model?
 
 *Queued.* Smoke test hint (not conclusive): at low chaos the map needed ~400 parameters to
