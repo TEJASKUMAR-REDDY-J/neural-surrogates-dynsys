@@ -1088,28 +1088,46 @@ noise as a fraction of each coordinate's spread, and see what survives.
 
 Same 40 systems at every level, so nothing here is a sample-size effect:
 
-| noise | median forecast horizon | relative to clean |
-|---|---|---|
-| none | 123.8 steps | 1.00 |
-| 1% | 91.3 steps | 0.74 |
-| 5% | 44.8 steps | 0.36 |
+| noise | median forecast horizon | relative to clean | model beats copying |
+|---|---|---|---|
+| none | 123.8 steps | 1.00 | 19 / 40 |
+| 1% | 91.3 steps | 0.74 | 16 / 40 |
+| 5% | 44.8 steps | 0.36 | 15 / 40 |
+| 20% | 10.2 steps | 0.08 | **29 / 40** |
 
-Reasonable and unsurprising: noise costs you forecast horizon, roughly a quarter of it at 1%
-and two thirds at 5%. The task is harder, not broken.
+Noise costs forecast horizon, as expected — a quarter of it at 1%, two thirds at 5%, and
+almost all of it at 20%. The task gets harder, not broken.
+
+### The one place the network finally earns its keep
+
+Look at the last column. On clean data the trained network beats copying on 19 of 40 systems —
+the coin flip we keep finding. At 20% noise it wins on **29 of 40**.
+
+That is a mechanism, not a fluke. Copying reproduces a segment of the past *including its
+noise*. A trained network averages over many examples and cannot reproduce a specific noise
+realisation even if it wanted to. So the network's real advantage over lookup is
+**denoising** — and on clean data there is nothing to denoise, which is precisely why it only
+ties there.
+
+This reframes the parroting result usefully. It is not that neural surrogates are pointless. It
+is that on clean synthetic data their main advantage is switched off, and every benchmark in
+this field is clean synthetic data.
 
 ### The predictor is not fine. It is gone.
 
-| noise | spectral entropy alone | **best pair of statistics** |
-|---|---|---|
-| none | 0.074 | **+0.294** |
-| **1%** | −0.062 | **−0.036** |
-| 5% | −0.068 | −0.050 |
+| noise | **best pair of statistics** |
+|---|---|
+| none | **+0.294** |
+| **1%** | **−0.036** |
+| 5% | −0.050 |
+| 20% | −0.095 |
 
 ```
 predictability of surrogate skill (leave-one-out R2)
 clean  ████████████  +0.29
    1%                -0.04     gone
    5%                -0.05     gone
+  20%                -0.10     gone
 ```
 
 **One percent noise takes the predictor from explaining 29% of the variation to explaining
