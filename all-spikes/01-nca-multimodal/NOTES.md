@@ -228,3 +228,104 @@ Every label — channel counts, layer widths, parameter counts, token-grid shape
 off a **built model** rather than typed in, so a diagram cannot quietly drift away from the
 code. If the architecture changes and the diagram is not regenerated, the numbers on it are
 wrong in an obvious way instead of a silent one.
+
+---
+
+## 2026-09-09 — v4: eight architectures, and the shuffled-twin prediction confirmed
+
+180 more fits, zero failures. Eight architectures now run on the same fifteen datasets,
+same masks, same seeds, same protocol, all between 12,795 and 14,479 parameters.
+
+### The prediction I put on record, and what happened
+
+Before the run: *"A5 is the test of the structural explanation. Full self-attention with
+per-cell tokens is the one architecture here that could in principle learn arbitrary
+cell-to-cell relations and so recover a permuted lattice. If it also collapses, the limit is
+the whole weight-shared family. If it survives, my explanation was wrong and it was pooling,
+not weight sharing."*
+
+**A5 collapses with the rest.** On the shuffled twins: cml 0.614 -> 1.000, digits 0.515 ->
+0.979, multitone 0.432 -> 0.995. All eight architectures land at roughly 1.0, which is no
+better than guessing the mean.
+
+### But the mechanism is sharper than the explanation I gave, and it corrects me
+
+I said the limit was *weight sharing*. Looking at which architecture survives says something
+more specific.
+
+**A5 has no positional encoding.** Its tokens are produced by a shared 1x1 convolution from
+each cell's neighbourhood, so the attention layer sees an unordered bag of tokens and is
+*permutation-equivariant by construction*. It cannot distinguish cell 17 from cell 42 even in
+principle. So A5 does not test "can attention recover a permutation" - it tests a transformer
+without position information, and those are different claims. My phrasing was too strong.
+
+The one partial survivor points at the real discriminator. **A4 is the only architecture
+containing a learned map between specific positions** - its global mix is
+`nn.Linear(T, T)` over token *positions*, the MLP-Mixer token-mixing matrix. And A4 is the
+only architecture that survives any shuffled twin (digits 0.505 -> 0.707, against roughly
+1.0 for the other seven).
+
+So the honest statement is narrower and better: **an automaton recovers a permuted lattice
+only to the extent it contains a learned position-to-position map.** Weight sharing is the
+reason most of them lack one, not the mechanism itself. The clean follow-up is A5 plus a
+learned positional encoding; if that survives the twin, position information is the whole
+story and weight sharing is irrelevant.
+
+### Two design questions answered cleanly
+
+**Fixed perception filters were a real limitation.** A6 uses learned messages from
+(cell, neighbour, difference) with *identical* locality to A1 - both leak exactly 0.0000
+outside the light cone, so the light cone is not a confound - and beats A1 on **10 of 15**
+datasets: gray_scott 0.136 -> 0.100, natural_patches 0.317 -> 0.243, multitone 0.518 ->
+0.473. The identity/gradient/Laplacian stencil was leaving something on the table.
+
+**Pooling was hurting A3.** A5 is the same attention without the squeeze to 64 tokens, and
+beats A3 on **12 of 15** datasets. So A3's earlier underperformance was the pooling, not
+attention itself.
+
+### A prediction of mine that failed outright
+
+A7 was built as the direct test of the memory question - a GRU at every site, gates designed
+for carrying state, against every other architecture that carries memory only implicitly. I
+wrote that if explicit gating matters, A7 is the architecture whose score should suffer most
+when the scratch channels are wiped.
+
+**A7's memory ratio is 1.0001.** Wiping its scratch channels halfway through a rollout costs
+essentially nothing. The highest memory reliance belongs to **A4 at 1.1010**, which has no
+gating at all.
+
+Giving an automaton explicit memory machinery did not make it use memory. The likely reason
+is that the update gate learns to stay open, leaving the rule effectively feedforward, but
+that is a hypothesis and the gate statistics were not recorded. Worth logging next time.
+
+### The headline did not move
+
+| | 4 architectures (v3) | **8 architectures (v3+v4)** |
+|---|---|---|
+| trained beats training-free | 9 / 15 | **9 / 15** |
+
+Doubling the architecture families - adding transformer, graph, recurrent and spectral layers
+to the four context variants - **changed nothing**. Gray-Scott is still won by PCA imputation
+at 0.016 against the best of eight at 0.083, a factor of five, on the dataset added
+specifically as the positive control for locality.
+
+### Mechanism summary, all eight
+
+| arch | params | light-cone leak | global share | knockout | memory |
+|---|---|---|---|---|---|
+| A1_local | 13,215 | **0.0000** | 0.0000 | 1.0000 | 1.0016 |
+| A2_pooled | 13,046 | 0.2632 | 0.2489 | 1.0122 | 1.0118 |
+| A3_attentive | 13,163 | 0.0061 | 0.8353 | 1.1506 | 1.0056 |
+| A4_interleaved | 12,795 | 0.0776 | 0.2478 | 1.0320 | **1.1010** |
+| A5_transformer | 14,479 | 0.0353 | 0.6746 | 1.0489 | 1.0159 |
+| A6_graph | 13,108 | **0.0000** | 0.0000 | 1.0000 | 0.9975 |
+| A7_recurrent | 13,038 | **0.0000** | 0.0000 | 1.0000 | 1.0001 |
+| A8_spectral | 13,835 | 0.0310 | 0.0639 | 1.0041 | 0.9986 |
+
+Three architectures leak *exactly* zero outside the light cone - A1 by construction, A6 as
+asserted in its self-check, A7 as a consequence of reading only its neighbourhood. That is the
+structural result restated: locality is a hard constraint, not a tendency.
+
+A8 is the surprise in this table. Its spectral path is global in one step, yet it supplies
+only 6% of each update and silencing it costs 0.4%. An FNO-style global path is present and
+almost unused.
