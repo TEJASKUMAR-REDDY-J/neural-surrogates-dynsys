@@ -128,7 +128,7 @@ def main() -> None:
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--lr", type=float, default=2e-3)
     ap.add_argument("--optimizer", default="adamw")
-    ap.add_argument("--archs", nargs="+", default=list(M.ARCHITECTURES))
+    ap.add_argument("--archs", nargs="+", default=list(M._all()))
     ap.add_argument("--datasets", nargs="+", default=None)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--n-shards", type=int, default=1)

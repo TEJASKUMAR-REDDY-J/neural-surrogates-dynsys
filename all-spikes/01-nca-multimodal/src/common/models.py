@@ -354,12 +354,23 @@ ARCHITECTURES = {
 }
 
 
+def _all() -> dict:
+    """A1-A4 plus the layer-family automata in models_v2, imported lazily to avoid a cycle."""
+    out = dict(ARCHITECTURES)
+    try:
+        from src.common.models_v2 import NEW_ARCHITECTURES
+        out.update(NEW_ARCHITECTURES)
+    except ImportError:
+        pass
+    return out
+
+
 def build(arch: str, spatial: tuple, c_data: int, **kw) -> _BaseNCA:
-    return ARCHITECTURES[arch](tuple(spatial), c_data, **kw)
+    return _all()[arch](tuple(spatial), c_data, **kw)
 
 
 def scale_for_budget(arch: str, spatial: tuple, c_data: int, target: int = 13_000,
-                     lo: float = 0.15, hi: float = 1.6, **kw) -> float:
+                     lo: float = 0.10, hi: float = 5.0, **kw) -> float:
     """Find the width scale that puts this architecture closest to `target` parameters.
 
     The global branches cost a fixed ~5k on top of the shared body, so a single scale

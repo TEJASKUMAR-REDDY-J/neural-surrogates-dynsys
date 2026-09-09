@@ -244,12 +244,144 @@ def diagram_propagation():
     save(fig, "arch_00_why_global.png")
 
 
+
+
+
+# ---------------------------------------------------------------------------------------
+# A5-A8: the layer-family automata
+# ---------------------------------------------------------------------------------------
+
+def diagram_a5():
+    m, sc, _ = facts("A5_transformer")
+    fig, ax = frame(
+        "A5  transformer  —  every cell is a token, all tokens attend to all tokens",
+        f"{m.n_params:,} parameters · width scale {sc} · A3 without the pooling shortcut, so "
+        f"the two together separate 'attention helps' from 'pooling hurt' · cost is "
+        f"quadratic in the number of cells")
+    y, h = 0.34, 0.34
+    r, _ = box(ax, 0.005, y, 0.085, h, f"state\n{m.c_state} ch", "state")
+    r2, l2 = box(ax, 0.11, y, 0.11, h, "perceive\nfixed 3x3\ncircular", "perceive")
+    arrow(ax, r, l2)
+    r3, l3 = box(ax, 0.24, y, 0.11, h, f"tokenise\n1x1 -> {m.d} ch\none token PER CELL", "mlp")
+    arrow(ax, r2, l3)
+    r4, l4 = box(ax, 0.37, y, 0.15, h,
+                 f"self-attention\n{m.d} ch, 4 heads\nN x N over EVERY cell", "global")
+    arrow(ax, r3, l4)
+    r5, l5 = box(ax, 0.54, y, 0.10, h, "add + norm", "perceive")
+    arrow(ax, r4, l5)
+    r6, l6 = box(ax, 0.66, y, 0.13, h, "feed-forward\nper token", "mlp")
+    arrow(ax, r5, l6)
+    r7, l7 = box(ax, 0.81, y, 0.10, h, "add + norm", "perceive")
+    arrow(ax, r6, l7)
+    r8, l8 = box(ax, 0.93, y, 0.07, h, "head\nzero-init", "head")
+    arrow(ax, r7, l8)
+    ax.text(0.5, 0.08, "global_gain scales the attention output only, so knockout removes the "
+                       "mixing and leaves the per-cell feed-forward intact",
+            fontsize=7, ha="center", style="italic", color="#444")
+    save(fig, "arch_A5_transformer.png")
+
+
+def diagram_a6():
+    m, sc, _ = facts("A6_graph")
+    fig, ax = frame(
+        "A6  graph  —  learned messages along lattice edges",
+        f"{m.n_params:,} parameters · width scale {sc} · EXACTLY as local as A1, one hop per "
+        f"step · so it isolates 'learned edge functions' from 'greater reach'")
+    y, h = 0.36, 0.32
+    r, _ = box(ax, 0.01, y, 0.09, h, f"state\n{m.c_state} ch", "state")
+    r2, l2 = box(ax, 0.14, y + 0.16, 0.17, h * 0.7,
+                 "for each neighbour (torus):\nroll the lattice by +-1", "perceive")
+    r3, l3 = box(ax, 0.14, y - 0.20, 0.17, h * 0.7,
+                 "message input:\n[cell, neighbour, difference]", "perceive")
+    arrow(ax, r, (0.14, y + 0.16 + h * 0.35), rad=-0.1)
+    arrow(ax, r, (0.14, y - 0.20 + h * 0.35), rad=0.1)
+    r4, l4 = box(ax, 0.36, y, 0.15, h, "message net\nshared across\nall edges", "mlp")
+    arrow(ax, r2, l4)
+    arrow(ax, r3, l4)
+    r5, l5 = box(ax, 0.54, y, 0.11, h, "aggregate\nSUM over\nneighbours", "global")
+    arrow(ax, r4, l5)
+    r6, l6 = box(ax, 0.68, y, 0.15, h, "update net\n[cell, aggregate]", "mlp")
+    arrow(ax, r5, l6)
+    r7, l7 = box(ax, 0.86, y, 0.11, h, "head + residual\nzero-init", "head")
+    arrow(ax, r6, l7)
+    ax.text(0.5, 0.04, "A1 perceives through FIXED filters and learns only what to do with the "
+                       "result. Here the perception itself is learned.\nSame light cone, so "
+                       "any difference is the edge function, not the reach.",
+            fontsize=7, ha="center", style="italic", color="#444")
+    save(fig, "arch_A6_graph.png")
+
+
+def diagram_a7():
+    m, sc, _ = facts("A7_recurrent")
+    fig, ax = frame(
+        "A7  recurrent  —  a gated recurrent cell at every site",
+        f"{m.n_params:,} parameters · width scale {sc} · the cell's own state IS the "
+        f"recurrent hidden state · the direct test of the memory question")
+    y, h = 0.34, 0.34
+    r, _ = box(ax, 0.01, y, 0.09, h, f"state s\n{m.c_state} ch", "state")
+    r2, l2 = box(ax, 0.14, y, 0.12, h, "perceive\nfixed 3x3\ncircular", "perceive")
+    arrow(ax, r, l2)
+    r3, l3 = box(ax, 0.29, y, 0.11, h, "encode\n1x1 -> x", "mlp")
+    arrow(ax, r2, l3)
+    r4, l4 = box(ax, 0.43, y + 0.17, 0.15, h * 0.62, "reset gate  r\nsigmoid", "head")
+    r5, l5 = box(ax, 0.43, y - 0.19, 0.15, h * 0.62, "update gate  z\nsigmoid", "head")
+    arrow(ax, r3, l4)
+    arrow(ax, r3, l5)
+    r6, l6 = box(ax, 0.61, y, 0.17, h, "candidate\ntanh( W [x, r*s] )\nzero-init", "mlp")
+    arrow(ax, r4, l6)
+    r7, l7 = box(ax, 0.81, y, 0.16, h, "(1 - z) * candidate\n= the delta", "out")
+    arrow(ax, r6, l7)
+    arrow(ax, r5, l7)
+    ax.text(0.5, 0.03, "The candidate is a RESIDUAL proposal around the current state. Written "
+                       "the textbook way a zero-init candidate proposes zero,\nso the update "
+                       "gate erases the input - the self-check caught exactly that, a move of "
+                       "0.94 at initialisation.",
+            fontsize=7, ha="center", style="italic", color="#444")
+    save(fig, "arch_A7_recurrent.png")
+
+
+def diagram_a8():
+    m, sc, _ = facts("A8_spectral")
+    fig, ax = frame(
+        "A8  spectral  —  mixing in the frequency domain, FNO-style",
+        f"{m.n_params:,} parameters · width scale {sc} · modes kept: {m.modes} · global in "
+        f"one step like A2-A4, but the prior is smoothness rather than a summary statistic")
+    y, h = 0.40, 0.30
+    yl = 0.05
+    r, _ = box(ax, 0.01, y, 0.09, h, f"state\n{m.c_state} ch", "state")
+    r2, l2 = box(ax, 0.13, y, 0.11, h, "perceive\nfixed 3x3\ncircular", "perceive")
+    arrow(ax, r, l2)
+    r3, l3 = box(ax, 0.27, y, 0.09, h, "lift\n1x1", "mlp")
+    arrow(ax, r2, l3)
+    rs, ls = box(ax, 0.40, y, 0.20, h,
+                 f"SPECTRAL PATH\nrFFT -> keep {m.modes} low modes\n"
+                 f"complex weights -> iFFT\nzero-initialised", "global")
+    arrow(ax, r3, ls)
+    rl, ll = box(ax, 0.40, yl, 0.20, h * 0.8, "LOCAL PATH   pointwise 1x1", "mlp")
+    arrow(ax, (0.355, y), (0.40, yl + h * 0.4), rad=-0.12)
+    rp, lp = box(ax, 0.64, y - 0.10, 0.07, h, "+\nGELU", "out")
+    arrow(ax, rs, (0.64, y + h / 2 - 0.02))
+    arrow(ax, rl, (0.64, yl + h * 0.4))
+    r4, l4 = box(ax, 0.75, y - 0.10, 0.11, h, "feed-forward", "mlp")
+    arrow(ax, rp, l4)
+    r5, l5 = box(ax, 0.89, y - 0.10, 0.10, h, "head + residual\nzero-init", "head")
+    arrow(ax, r4, l5)
+    ax.text(0.5, -0.02, "The spectral path starts at exactly zero, so the automaton begins "
+                        "purely local and has to earn its global component.",
+            fontsize=7, ha="center", style="italic", color="#444")
+    save(fig, "arch_A8_spectral.png")
+
+
 def main():
     diagram_propagation()
     diagram_a1()
     diagram_a2()
     diagram_a3()
     diagram_a4()
+    diagram_a5()
+    diagram_a6()
+    diagram_a7()
+    diagram_a8()
 
 
 if __name__ == "__main__":
