@@ -1,0 +1,26 @@
+{
+  "stages": [
+    {
+      "name": "lag-signalling",
+      "cwd": "03-relevance-dilution",
+      "cmds": [["python", "-u", "lag.py"]],
+      "logs": ["03-relevance-dilution/logs/lag.out"],
+      "marker": "[",
+      "est_minutes": 45,
+      "cap_multiple": 2.5
+    },
+    {
+      "name": "hybrid-layer-grid",
+      "cwd": "01-nca-multimodal",
+      "cmds": [
+        ["python", "-u", "-m", "src.run_hybrid", "--shard", "0", "--n-shards", "2"],
+        ["python", "-u", "-m", "src.run_hybrid", "--shard", "1", "--n-shards", "2"]
+      ],
+      "logs": ["01-nca-multimodal/logs/hybrid_s0.out",
+               "01-nca-multimodal/logs/hybrid_s1.out"],
+      "marker": "[",
+      "est_minutes": 170,
+      "cap_multiple": 2.0
+    }
+  ]
+}

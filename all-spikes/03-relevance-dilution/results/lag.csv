@@ -1,0 +1,2 @@
+beats_mean,err_knn,err_mean_baseline,err_model,lag,lookback,mode,n_features,seed,skill,train_s
+True,0.2071775056295427,1.0,0.00628524087369442,0,1,sync,3,0,0.9937147591263056,25.0
