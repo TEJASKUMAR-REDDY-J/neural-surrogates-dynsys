@@ -77,11 +77,12 @@ def fig_propagation(df):
     k = np.arange(1, 17)
     ax[0].plot(k, k, "k--", lw=1, alpha=0.6, label="one cell per step")
     ax[0].set_xlabel("step")
-    ax[0].set_ylabel("how far the ripple reached (cells)")
+    ax[0].set_ylabel("how far the ripple reached (cells)"
+                     " [thresholded - do not read as architecture]")
     ax[0].set_title("Poke one cell. How far does it get?\n(64-cell lattice)", fontsize=9)
     ax[0].legend(fontsize=7, frameon=False)
 
-    piv = df.pivot_table(index="dataset", columns="arch", values="frac_affected_step1",
+    piv = df.pivot_table(index="dataset", columns="arch", values="lightcone_leak_step1",
                          aggfunc="median")
     archs = [a for a in ARCH_C if a in piv]
     x = np.arange(len(piv.index))
@@ -90,9 +91,12 @@ def fig_propagation(df):
         ax[1].bar(x + i * w, piv[a], w, color=ARCH_C[a], label=a)
     ax[1].set_xticks(x + 0.4)
     ax[1].set_xticklabels(piv.index, rotation=35, ha="right", fontsize=6.5)
-    ax[1].set_ylabel("fraction of lattice reached\nafter ONE step")
-    ax[1].set_title("One step of influence", fontsize=9)
-    ax[1].axhline(1.0, color="#888", ls=":", lw=1)
+    ax[1].set_ylabel("share of influence OUTSIDE"
+                     " the light cone, after ONE step")
+    ax[1].set_yscale("symlog", linthresh=1e-5)
+    ax[1].set_title("Influence that outran the light cone"
+                    " (exactly 0 for a local rule)", fontsize=9)
+
 
     fig.suptitle("Information travel: the limit no amount of capacity removes",
                  fontsize=10, y=1.03)
@@ -178,8 +182,8 @@ def table(df) -> pd.DataFrame:
     """One row per architecture: the mechanism summary."""
     t = df.groupby("arch").agg(
         n_params=("n_params", "median"),
-        reach_step1=("frac_affected_step1", "median"),
-        steps_to_cover=("steps_to_cover", "median"),
+        lightcone_leak=("lightcone_leak_step1", "median"),
+        decay_per_cell=("decay_per_cell", "median"),
         global_share=("global_share_mean", "median"),
         knockout_ratio=("knockout_ratio", "median"),
         memory_ratio=("memory_ratio", "median"),
