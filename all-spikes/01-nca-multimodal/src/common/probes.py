@@ -62,12 +62,36 @@ def _gain(model, value: float):
 # ---------------------------------------------------------------------------------------
 
 def propagation(model, spatial: tuple, steps: int = 16, seed: int = 0,
-                tol: float = 1e-6) -> dict:
-    """Poke one cell. Watch how far the ripple has reached after each step.
+                tol: float = 1e-6, poke: float = 1.0) -> dict:
+    """Poke one cell. Measure how the influence spreads - without picking a threshold.
 
-    Returns the fraction of the lattice affected at each step, and the radius in cells.
-    A local rule gives radius ~= step. Anything with a working global branch reaches the
-    whole lattice on step 1, and the difference is unmistakable.
+    THE FIRST VERSION OF THIS WAS WRONG AND THE CORRECTION IS THE POINT.
+
+    It reported "fraction of the lattice affected", counting a cell as reached when the
+    difference exceeded an absolute 1e-6. Every architecture with a global branch scored
+    exactly 1.000 on every dataset, which is what prompted a closer look. A tolerance sweep
+    settled it: at 1e-3 the global architectures reach 0.047 of the lattice - exactly what
+    the purely local one reaches - and at 1e-6 they reach 1.000. The number was a property
+    of the threshold, not of the architecture. That is the same failure as R2b in
+    00-replications, where the complexity statistics turned out to be reading the sampling
+    rate.
+
+    A null control cleared the other suspicion: with a poke of size 0 the measured
+    difference is exactly 0, so the probe was never reading floating-point noise.
+
+    What is reported now needs no threshold:
+
+      lightcone_leak   the share of total influence MASS sitting outside the local light
+                       cone (distance > step). For a rule that only talks to its immediate
+                       neighbours this is EXACTLY zero, by construction, at any tolerance -
+                       which is what makes it a trustworthy measure rather than a tuned one.
+      decay_per_cell   how many orders of magnitude the influence loses per cell of
+                       distance. A local rule loses about 2.5, so its reach is short for
+                       reasons no threshold choice can change.
+      reach_curve      the influence profile itself, so the raw shape is inspectable.
+
+    The old threshold-based fields are still returned, marked as such, because the earlier
+    run used them and the difference between the two is itself the finding.
     """
     torch.manual_seed(seed)
     nd = len(spatial)
@@ -80,7 +104,7 @@ def propagation(model, spatial: tuple, steps: int = 16, seed: int = 0,
     with _deterministic(model), torch.no_grad():
         a = model.seed(obs, mask)
         b = a.clone()
-        b[idx] = b[idx] + 1.0                       # the poke
+        b[idx] = b[idx] + poke                      # the poke (0.0 gives the null control)
         n_cells = int(np.prod(spatial))
         coords = np.stack(np.meshgrid(*[np.arange(d) for d in spatial], indexing="ij"), -1)
         # distance on a torus, because the lattice wraps - which is the whole reason the
@@ -89,27 +113,56 @@ def propagation(model, spatial: tuple, steps: int = 16, seed: int = 0,
         delta = np.minimum(delta, np.array(spatial) - delta)
         dist = delta.max(-1) if nd > 1 else delta[..., 0]
 
-        frac, radius = [], []
-        for _ in range(steps):
+        frac, radius, leak, profiles = [], [], [], []
+        for k in range(steps):
             a, b = model.step(a), model.step(b)
-            diff = (a - b).abs().sum(1)[0].numpy()
+            diff = (a - b).abs().sum(1)[0].double().numpy()
+
+            # threshold-free: how much of the influence is outside the local light cone
+            total = float(diff.sum())
+            outside = float(diff[dist > (k + 1)].sum())
+            leak.append(outside / total if total > 0 else 0.0)
+
+            # the profile, so the raw shape can be inspected rather than trusted
+            profiles.append([float(diff[dist == r].mean()) if (dist == r).any() else 0.0
+                             for r in range(int(dist.max()) + 1)])
+
+            # kept only so the earlier, threshold-dependent numbers stay comparable
             hit = diff > max(tol, tol * float(np.abs(diff).max()))
             frac.append(float(hit.sum()) / n_cells)
             radius.append(float(dist[hit].max()) if hit.any() else 0.0)
 
+    prof = np.array(profiles[-1])
+    prof = prof / prof[0] if prof[0] > 0 else prof
+    live = np.where(prof > 0)[0]
+    if len(live) > 2:
+        r = live[1:min(len(live), 6)]
+        decay = float(-np.polyfit(r, np.log10(prof[r]), 1)[0])   # decades lost per cell
+    else:
+        decay = float("nan")
+
     return {"frac_affected": frac, "radius": radius, "n_cells": n_cells,
-            "max_radius": float(dist.max())}
+            "max_radius": float(dist.max()),
+            "lightcone_leak": leak, "decay_per_cell": decay,
+            "reach_curve": profiles[-1]}
 
 
 def propagation_summary(prop: dict) -> dict:
-    """Two numbers: how far after one step, and how many steps to cover the lattice."""
+    """The headline numbers. The threshold-free ones come first because they are the real ones."""
     frac = prop["frac_affected"]
+    leak = prop.get("lightcone_leak", [])
     reach = next((i + 1 for i, f in enumerate(frac) if f > 0.99), None)
     return {
-        "frac_affected_step1": frac[0] if frac else float("nan"),
-        "radius_step1": prop["radius"][0] if prop["radius"] else float("nan"),
-        "steps_to_cover": reach if reach is not None else float("nan"),
-        "frac_affected_final": frac[-1] if frac else float("nan"),
+        # threshold-free - trust these
+        "lightcone_leak_step1": leak[0] if leak else float("nan"),
+        "lightcone_leak_final": leak[-1] if leak else float("nan"),
+        "decay_per_cell": prop.get("decay_per_cell", float("nan")),
+        # threshold-dependent - kept for comparability with the first run, NOT to be
+        # reported as a property of the architecture. See the docstring above.
+        "frac_affected_step1__thresholded": frac[0] if frac else float("nan"),
+        "radius_step1__thresholded": prop["radius"][0] if prop["radius"] else float("nan"),
+        "steps_to_cover__thresholded": reach if reach is not None else float("nan"),
+        "frac_affected_final__thresholded": frac[-1] if frac else float("nan"),
     }
 
 
@@ -221,8 +274,41 @@ def demo() -> None:
                 p.add_(0.05 * torch.randn_like(p))
         return m
 
+    # NULL CONTROL: poke nothing, and nothing may light up. This is what rules out the
+    # probe reading floating-point noise, and it must run before anything else is believed.
+    for name in M.ARCHITECTURES:
+        mnull = wake(M.build(name, spatial, 1, scale=0.5))
+        z = propagation(mnull, spatial, steps=3, poke=0.0)
+        assert max(z["frac_affected"]) == 0.0, (
+            f"{name}: a poke of zero moved {max(z['frac_affected']):.3f} of the lattice - "
+            f"the probe is reading numerical noise")
+
     local = wake(M.build("A1_local", spatial, 1, scale=0.5))
     p_local = propagation(local, spatial, steps=6)
+
+    # A purely local rule must leak EXACTLY zero influence outside its light cone, at any
+    # step. This is the measure the reported numbers rest on, so it is asserted, not assumed.
+    assert max(p_local["lightcone_leak"]) == 0.0, (
+        f"a local rule leaked outside its light cone: {p_local['lightcone_leak']}")
+
+    # TOLERANCE SWEEP. The first version of this self-check asserted that a local rule's
+    # thresholded reach is invariant to the tolerance. It is not, and the assertion failed
+    # on a differently-seeded model (2 cells at 1e-3 against 6 at 1e-6). That is worth
+    # keeping as a recorded fact rather than a fixed test: the thresholded reach moves with
+    # the tolerance for EVERY architecture, local ones included, because it depends on how
+    # fast that particular model's influence decays. It is not a property of the wiring.
+    #
+    # What IS a property of the wiring is the light cone, and it holds at any tolerance:
+    # a rule that only talks to its neighbours cannot move influence further than one cell
+    # per step, however loosely you choose to look.
+    for tol in (1e-2, 1e-3, 1e-6, 1e-10):
+        pr = propagation(local, spatial, steps=6, tol=tol)
+        for k, rad in enumerate(pr["radius"]):
+            assert rad <= k + 1, (
+                f"a local rule reached distance {rad} in {k + 1} steps at tol={tol} - "
+                f"that is outside its light cone and impossible")
+        assert max(pr["lightcone_leak"]) == 0.0, f"local leak at tol={tol}"
+
     r = p_local["radius"]
     assert r[0] <= 1.5, f"a local rule must reach ~1 cell in one step, got {r[0]}"
     assert r[-1] <= 6.5, f"a local rule cannot outrun one cell per step, got {r}"
@@ -231,9 +317,12 @@ def demo() -> None:
     for name in ("A2_pooled", "A3_attentive", "A4_interleaved"):
         g = wake(M.build(name, spatial, 1, scale=0.5))
         pg = propagation(g, spatial, steps=3)
-        assert pg["frac_affected"][0] > 0.5, (
-            f"{name}: a global branch must reach most of the lattice in one step, "
-            f"got {pg['frac_affected'][0]:.2f}")
+        # The honest claim: a global branch puts SOME influence outside the light cone
+        # immediately. Not "most of the lattice" - that was the thresholded number, and it
+        # was an artefact. The real share is well under a percent.
+        assert pg["lightcone_leak"][0] > 0, (
+            f"{name}: a global branch must place some influence outside the light cone, "
+            f"got {pg['lightcone_leak'][0]}")
 
     # contribution: a global branch must supply a non-zero share; A1 must report exactly 0
     obs = np.random.default_rng(0).random((4, 1, *spatial)).astype("float32")
@@ -272,7 +361,10 @@ def demo() -> None:
     assert np.isfinite(m["memory_ratio"])
 
     print(f"   A1 radius by step: {[round(v) for v in p_local['radius']]}  (one cell per step)")
-    print(f"   A2 lattice covered on step 1: {propagation(a2, spatial, steps=1)['frac_affected'][0]:.0%}")
+    print(f"   A1 influence lost per cell of distance: {p_local['decay_per_cell']:.2f} decades")
+    print(f"   A1 influence outside its light cone: {max(p_local['lightcone_leak']):.1e}  (exactly 0)")
+    print(f"   A2 influence outside its light cone on step 1: "
+          f"{propagation(a2, spatial, steps=1)['lightcone_leak'][0]:.2e}")
     print(f"   A2 global share of update: {c2['global_share_mean']:.2e} (untrained: near zero, as it should be)")
     print(f"   share as the branch is amplified 1x/10x/100x: "
           f"{shares[0]:.2e} -> {shares[1]:.2e} -> {shares[2]:.2e}")

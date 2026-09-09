@@ -87,6 +87,77 @@ def leakage(X: np.ndarray, train_frac: float = 0.75) -> float:
     return sum(r.tobytes() in seen for r in test) / max(len(test), 1)
 
 
+def gray_scott(n: int, size: int = 16, steps: int = 900, f: float = 0.037,
+               k: float = 0.06, du: float = 0.16, dv: float = 0.08, seed: int = 0):
+    """Reaction-diffusion on a torus. A genuinely local PDE - the honest case for an NCA.
+
+    Two chemicals diffuse and react. Every rule is local by construction, so a local
+    automaton should do well here and a global branch should have little to add. It is the
+    positive control for locality, the mirror of the shuffled datasets below.
+    """
+    rng = np.random.default_rng(seed)
+    u = np.ones((size, size))
+    v = np.zeros((size, size))
+    c = size // 2
+    r = max(2, size // 6)
+    u[c - r:c + r, c - r:c + r] = 0.5
+    v[c - r:c + r, c - r:c + r] = 0.25
+    u += 0.02 * rng.standard_normal((size, size))
+    v += 0.02 * rng.standard_normal((size, size))
+
+    def lap(a):                                   # periodic: no walls, same as the models
+        return (np.roll(a, 1, 0) + np.roll(a, -1, 0)
+                + np.roll(a, 1, 1) + np.roll(a, -1, 1) - 4 * a)
+
+    out, keep_every = [], max(1, steps // (n + 5))
+    for t in range(steps):
+        uvv = u * v * v
+        u = np.clip(u + du * lap(u) - uvv + f * (1 - u), 0, 1)
+        v = np.clip(v + dv * lap(v) + uvv - (f + k) * v, 0, 1)
+        if t % keep_every == 0:
+            out.append(v.copy())
+    return np.stack(out[:n])
+
+
+def game_of_life(n: int, size: int = 16, seed: int = 0, run_len: int = 6):
+    """Conway's rule on a torus. Discrete, exactly local, exactly known - no numerics.
+
+    Sampled from MANY short independent runs rather than one long one. A single 16x16 board
+    settles into still lifes and blinkers within a few dozen steps, so one long run yields
+    only ~46 distinct states out of 900 - almost everything is a duplicate, and after
+    deduplication there is not enough left to train on. Short runs from fresh random starts
+    keep the boards in the interesting transient where the rule is actually doing something.
+    """
+    rng = np.random.default_rng(seed)
+    out = []
+    while len(out) < n:
+        g = (rng.random((size, size)) < rng.uniform(0.25, 0.45)).astype(float)
+        for _ in range(run_len):
+            nb = sum(np.roll(np.roll(g, i, 0), j, 1)
+                     for i in (-1, 0, 1) for j in (-1, 0, 1) if (i, j) != (0, 0))
+            g = ((nb == 3) | ((g == 1) & (nb == 2))).astype(float)
+            out.append(g.copy())
+    return np.stack(out[:n])
+
+
+def shuffle_cells(X: np.ndarray, seed: int = 0) -> np.ndarray:
+    """Apply ONE fixed permutation to the cells of every example.
+
+    This is the control the first run was missing. The data, its difficulty and its
+    statistics are all unchanged - only the claim that neighbouring cells are related is
+    destroyed. So any gap between a local automaton and a global one on a shuffled twin is
+    attributable to locality alone, rather than to the dataset differing in some other way.
+
+    The first run had only two datasets where locality was meaningless, and one of them
+    turned out to be leaking, which left the central prediction resting on a single clean
+    dataset. These twins fix that.
+    """
+    rng = np.random.default_rng(seed)
+    flat = X.reshape(len(X), X.shape[1], -1)
+    perm = rng.permutation(flat.shape[-1])
+    return flat[:, :, perm].reshape(X.shape)
+
+
 def _windows(series: np.ndarray, width: int, n: int, seed: int) -> np.ndarray:
     """Cut n random windows of `width` consecutive rows out of a (T, d) trajectory."""
     rng = np.random.default_rng(seed)
@@ -267,6 +338,36 @@ def build_all(n_per_set: int = 900, seed: int = 0) -> list[Dataset]:
         "multitone_signal", "signal", _norm01(sig)[:, None, :], (64,), 1,
         ordered=True, temporal=True,
         note="sum of three sinusoids - smooth, predictable, an easy control"))
+
+    # --- 10-12. genuinely local 2-D systems, and a null control -------------------------
+    gs = _norm01(gray_scott(n_per_set, 16, seed=seed))
+    sets.append(Dataset(
+        "gray_scott_16x16", "pde", gs[:, None, :, :], (16, 16), 1,
+        ordered=True, temporal=False,
+        note="reaction-diffusion on a torus - every rule local, the positive control"))
+
+    gol = game_of_life(n_per_set, 16, seed=seed)
+    sets.append(Dataset(
+        "game_of_life_16x16", "ca", gol[:, None, :, :], (16, 16), 1,
+        ordered=True, temporal=False,
+        note="Conway on a torus - discrete, exactly local, exactly known"))
+
+    noise = rng.random((n_per_set, 64))
+    sets.append(Dataset(
+        "random_field", "control", noise[:, None, :], (64,), 1,
+        ordered=False, temporal=False,
+        note="pure noise. NOTHING should beat guessing the mean. If anything does, the "
+             "pipeline is broken and every other row is suspect."))
+
+    # --- 13-15. shuffled twins: the same data with locality destroyed --------------------
+    # Each is an exact copy of an ordered dataset with one fixed cell permutation applied.
+    # Same values, same difficulty, same statistics - only adjacency is gone.
+    for src in ("cml_lattice", "digits_8x8", "multitone_signal"):
+        base = next(d for d in sets if d.name == src)
+        sets.append(Dataset(
+            f"{src}__shuffled", base.modality, shuffle_cells(base.X, seed=7),
+            base.spatial, base.channels, ordered=False, temporal=False,
+            note=f"{src} with the cells permuted once - the locality control"))
 
     # Every dataset is deduplicated before it is ever split. See `dedup` for why - one
     # baseline was scoring a perfect 0.000 by retrieving an identical training row.
