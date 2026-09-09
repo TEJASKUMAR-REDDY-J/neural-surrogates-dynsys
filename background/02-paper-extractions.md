@@ -1390,3 +1390,59 @@ a 4,700-model empirical law relating minimum attainable forecasting error to a p
 complexity statistic. It does not cover our setting (dynamical-system surrogates, rollout,
 architecture selection, multivariate), but it occupies the framing. Any direction we pick must
 say in one sentence how it differs from the accuracy law.
+
+---
+
+# Part H — External review challenges, and what verification found (2026-09-09)
+
+An external reviewer read all project documents and raised one direct challenge to an
+extraction in this file. Recorded here rather than edited into P3, per the append-only rule.
+
+## H1. Challenge to P3 (NNPT, arXiv:2512.01558) — CHECKED, and the extraction stands
+
+**The challenge.** *"The project describes NNPT as finding a capacity peak followed by a ~47%
+drop in fully chaotic settings. The current arXiv record instead reports a sharp approximately
+sevenfold increase in minimum capacity at chaos onset; it does not support the stated
+non-monotonic result. This needs an append-only correction before it enters any paper
+narrative."*
+
+**What verification found.** The arXiv abstract was re-fetched on 2026-09-09. It contains, verbatim:
+
+> "An equalized-accuracy protocol with 1% tolerance reveals an unexpected non-monotonic
+> capacity profile: capacity peaks at f=5 in the late integrable regime (3x32, 2242
+> parameters), remains elevated through the transition region (f~15-17), then decreases in the
+> fully chaotic regime (f>=17, requiring only 2x32 with 1186 parameters)--a 47% reduction from
+> peak."
+
+**Verdict: the challenge is incorrect and P3 needs no correction.** The abstract states the
+non-monotonic profile, the peak at f=5, and the 47% reduction, in those words. 2242 -> 1186
+parameters is indeed a 47% reduction. No sevenfold increase appears anywhere in the abstract.
+
+**Why this is worth recording rather than quietly dismissing.** R5 in `00-replications` exists
+to test exactly this published claim, and reported that it does not reproduce at any of six
+tolerances on either of two map families. If the claim had never been what we said it was, R5
+would have been attacking a strawman and its result would be worthless. It is not, and it
+stands.
+
+**What the challenge does correctly imply, and what we should adopt.** Our P3 entry was built
+from "abstract + metadata retrieved verbatim" and never from the full text. So the *numbers*
+are confirmed but the *experimental detail behind them* is still unread by us - seed counts,
+the exact architecture ladder, and whether the 47% survives their own tolerance choices are
+all things R5 criticised without having seen the methods section. Before any of this enters a
+paper, the full text should be read. That is a real gap the challenge surfaced, even though
+its factual claim was wrong.
+
+## H2. Challenges accepted without dispute
+
+Recorded so they are not lost, and so the record shows which criticisms were taken:
+
+- **Israeli & Goldenfeld priority.** Already the project's own position - `05` section 1.1
+  records C3 as known since 2004/2006, and A12/A13 in Part G extract the follow-ups. The
+  reviewer and the project agree; nothing changes.
+- **Context parroting (Zhang & Gilpin, arXiv:2505.11349) is evidenced for zero-shot
+  foundation-model forecasting from a context window**, not automatically for custom-trained
+  surrogates. Our extension to trained surrogates is therefore still the part needing the
+  controlled experiment. This sharpens A-cluster framing and should be stated in any writeup.
+- **Weighted permutation entropy (Garland, James & Bradley, arXiv:1404.6823) is a strong
+  baseline** for the older predictability framing. Already extracted as A15; the reviewer is
+  right that it must be treated as a baseline to beat rather than a feature to use.
