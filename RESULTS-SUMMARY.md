@@ -120,8 +120,8 @@ a query to which.
 | 4 | `03-relevance-dilution/figures/4_actuals.png` | Free-running predictions against truth. Same dynamics, three junk conditions. What failure looks like |
 | 5 | `03-relevance-dilution/figures/2_why_drift.png` | Why non-stationary junk is the dangerous kind |
 | 6 | `03-relevance-dilution/figures/3_lag.png` | Delivery: a shifted signal survives, a frozen one does not |
-| 7 | `01-nca-multimodal/figures/probe_1_propagation.png` | Locality as a hard limit, measured |
-| 8 | `01-nca-multimodal/figures/hybrid_1_attribution.png` | A third of global mechanisms do nothing |
+| 7 | `01-nca-multimodal/results/figures/probe_1_propagation.png` | Locality as a hard limit, measured |
+| 8 | `01-nca-multimodal/results/figures/hybrid_1_attribution.png` | A third of global mechanisms do nothing |
 
 **The four numbers to lead with:** 33x, rho -0.87, 18 versus 16, and 896x.
 
