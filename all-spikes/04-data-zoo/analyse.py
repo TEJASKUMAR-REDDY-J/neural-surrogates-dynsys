@@ -76,27 +76,49 @@ def q1_spread(d, pd_):
     neural_best = piv.idxmax(axis=1).isin(NEURAL).sum()
     print(f"    -> a neural net wins on {neural_best}/{len(piv)} datasets")
 
-    fig, ax = plt.subplots(1, 2, figsize=(11.5, 3.8))
+    TEMPORAL = {"weather", "human", "physical", "economic", "sim-chaos", "control",
+                "sensor"}
+    kinds = pd_.groupby("dataset").kind.first()
+    is_t = kinds.isin(TEMPORAL)
+    gap = (P.max(axis=1) - P.apply(lambda r: r.nlargest(2).iloc[-1], axis=1)).dropna()
+    rng = P.max(axis=1).max() - P.max(axis=1).min()
+
+    print()
+    print("  HONEST comparison (the spread above includes methods that fail outright):")
+    print(f"    picking the best method over the second best buys, median : {gap.median():.3f} R2")
+    print(f"    achievable R2 across datasets spans                       : {rng:.3f} R2")
+    print(f"    -> the data matters {rng / max(gap.median(), 1e-9):.0f}x more than the method choice")
+    print(f"    temporal datasets  : median best R2 {P.max(axis=1)[is_t].median():.3f} (n={int(is_t.sum())})")
+    print(f"    non-temporal panels: median best R2 {P.max(axis=1)[~is_t].median():.3f} (n={int((~is_t).sum())})")
+
+    fig, ax = plt.subplots(1, 2, figsize=(12.5, 4.0))
     order = P.max(axis=1).sort_values().index
     for m in P.columns:
-        ax[0].plot(range(len(order)), P.loc[order, m], "o", ms=3.5, alpha=0.75, label=m)
-    ax[0].set_xlabel("datasets, ordered by how predictable they are")
+        ax[0].plot(range(len(order)), P.loc[order, m], "o", ms=4, alpha=0.75, label=m)
+    ax[0].plot(range(len(order)), P.loc[order].max(axis=1), "k-", lw=1.3, alpha=0.7,
+               label="best of all 8")
+    ax[0].set_xlabel("47 datasets, ordered by how predictable they are")
     ax[0].set_ylabel("R2 on held-out data (clipped at -1)")
-    ax[0].set_title("Every method on every dataset.\n"
-                    "Vertical spread = architecture. Horizontal = data.", fontsize=9)
-    ax[0].legend(fontsize=6.5, frameon=False, ncol=2)
+    ax[0].set_title("Every method on every dataset\n"
+                    "vertical spread = architecture,   horizontal = data", fontsize=9.5)
+    ax[0].legend(fontsize=6.5, frameon=False, ncol=3, loc="upper left")
 
-    ax[1].hist([within_trained.dropna(), (P.max(axis=1) - P.min(axis=1)).dropna()],
-               bins=14, label=["trained methods only", "all methods incl. baselines"],
-               color=["#2980b9", "#bbbbbb"])
-    ax[1].axvline(across.std(), color="#c0392b", lw=1.8)
-    ax[1].text(across.std() * 1.05, ax[1].get_ylim()[1] * 0.8,
-               f"spread ACROSS\ndatasets = {across.std():.2f}", color="#c0392b", fontsize=7.5)
-    ax[1].set_xlabel("R2 spread within one dataset")
+    ax[1].hist(gap, bins=18, color="#2980b9")
+    top = ax[1].get_ylim()[1]
+    ax[1].axvline(gap.median(), color="#16a085", lw=2)
+    ax[1].text(gap.median() + 0.03, top * 0.72,
+               "median gain from the BEST\nmethod over the second best\n= "
+               + f"{gap.median():.3f}", color="#16a085", fontsize=8)
+    ax[1].axvline(rng, color="#c0392b", lw=2)
+    ax[1].text(rng - 0.03, top * 0.40,
+               "achievable R2 ACROSS\ndatasets spans " + f"{rng:.2f}",
+               color="#c0392b", fontsize=8, ha="right")
+    ax[1].set_xlabel("R2 gained by choosing the best method over the second best")
     ax[1].set_ylabel("datasets")
-    ax[1].set_title("Choosing the architecture moves you this much.\n"
-                    "Choosing the dataset moves you that much.", fontsize=9)
-    ax[1].legend(fontsize=7, frameon=False)
+    ax[1].set_title("Method choice buys " + f"{gap.median():.3f}" + ".  Data spans "
+                    + f"{rng:.2f}" + ".\nA factor of "
+                    + f"{rng / max(gap.median(), 1e-9):.0f}" + ".", fontsize=9.5)
+
     fig.tight_layout(); fig.savefig(FIG / "zoo_1_spread.png", bbox_inches="tight")
     plt.close(fig)
     return piv

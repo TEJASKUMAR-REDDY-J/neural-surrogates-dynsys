@@ -1,14 +1,8 @@
 [
   {
-    "stage": "lag-signalling",
+    "stage": "data-zoo",
     "verdict": "completed",
-    "units": 132,
-    "minutes": 38.0
-  },
-  {
-    "stage": "hybrid-layer-grid",
-    "verdict": "completed",
-    "units": 160,
-    "minutes": 164.1
+    "units": 141,
+    "minutes": 80.0
   }
 ]
