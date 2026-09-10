@@ -1,0 +1,16 @@
+{
+  "stages": [
+    {
+      "name": "data-zoo",
+      "cwd": "04-data-zoo",
+      "cmds": [
+        ["python", "-u", "study.py", "--shard", "0", "--n-shards", "2"],
+        ["python", "-u", "study.py", "--shard", "1", "--n-shards", "2"]
+      ],
+      "logs": ["04-data-zoo/logs/zoo_s0.out", "04-data-zoo/logs/zoo_s1.out"],
+      "marker": "[",
+      "est_minutes": 120,
+      "cap_multiple": 2.5
+    }
+  ]
+}
