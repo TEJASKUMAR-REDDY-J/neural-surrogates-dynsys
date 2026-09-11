@@ -167,6 +167,14 @@ def main() -> None:
 
     shutil.copy2(ROOT / "RESULTS-SUMMARY.md", OUT / "SUMMARY.md")
 
+    # The two slide figures are generated straight into RESULTS/figures/ rather than copied
+    # from a spike, so they must be regenerated AFTER the rmtree above or a rebuild would
+    # silently delete them.
+    import make_slide_figures
+    make_slide_figures.OUT.mkdir(parents=True, exist_ok=True)
+    make_slide_figures.fig_locality()
+    make_slide_figures.fig_stepwise()
+
     lines = [
         "# RESULTS",
         "",
@@ -195,6 +203,21 @@ def main() -> None:
         lines.append(f"| {n.split('_')[0]} | [{n}](figures/{n}) | {d} |")
 
     lines += [
+        "",
+        "### Purpose-built slide figures",
+        "",
+        "| file | what it shows |",
+        "|---|---|",
+        "| [slide_locality_vs_global.png](figures/slide_locality_vs_global.png) | Local versus "
+        "global pathways. Left: a local rule leaks EXACTLY zero influence beyond one cell, at "
+        "any parameter count. Right: that reach only pays when neighbours are meaningless - "
+        "1.33x for the position-map pathway, and 1.01 to 1.07 everywhere else. |",
+        "| [slide_stepwise_vs_direct.png](figures/slide_stepwise_vs_direct.png) | Stepping "
+        "versus jumping straight to t+h. Small steps start 100x better and stay usable to "
+        "~230 steps against ~113 for the jump. Past 256 neither forecasts: the jump settles "
+        "onto the average while stepping overshoots past it. |",
+        "",
+        "Regenerate both with `python make_slide_figures.py`.",
         "",
         "### Architecture diagrams",
         "",

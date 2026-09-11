@@ -40,6 +40,15 @@ scope limits, and future directions.
 | 18 | [18_pointwise_vs_structural.png](figures/18_pointwise_vs_structural.png) | Capacity improves next-step accuracy (+0.84) and attractor structure not at all (+0.06). |
 | 19 | [19_example_trajectories.png](figures/19_example_trajectories.png) | What a surrogate actually draws, against the real attractor. |
 
+### Purpose-built slide figures
+
+| file | what it shows |
+|---|---|
+| [slide_locality_vs_global.png](figures/slide_locality_vs_global.png) | Local versus global pathways. Left: a local rule leaks EXACTLY zero influence beyond one cell, at any parameter count. Right: that reach only pays when neighbours are meaningless - 1.33x for the position-map pathway, and 1.01 to 1.07 everywhere else. |
+| [slide_stepwise_vs_direct.png](figures/slide_stepwise_vs_direct.png) | Stepping versus jumping straight to t+h. Small steps start 100x better and stay usable to ~230 steps against ~113 for the jump. Past 256 neither forecasts: the jump settles onto the average while stepping overshoots past it. |
+
+Regenerate both with `python make_slide_figures.py`.
+
 ### Architecture diagrams
 
 `figures/architectures/` - all eight cellular-automaton architectures plus one
